@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MadeGood — Budget Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header class="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <span class="logo">Agency 8</span>
+          <span class="logo-sub">MadeGood Budget Tracker</span>
+        </div>
+        <button class="btn-add" id="btn-add-entry">+ Add Entry</button>
+      </div>
+    </header>
+
+    <div class="container">
+
+      <!-- Budget overview -->
+      <div class="budget-overview">
+        <div class="budget-header">
+          <div>
+            <span class="budget-spent" id="total-spent">$0</span>
+            <span class="budget-label">spent of $500,000</span>
+          </div>
+          <span class="budget-remaining" id="total-remaining">$500,000 remaining</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar actual" id="progress-actual" style="width:0%"></div>
+          <div class="progress-bar planned" id="progress-planned" style="width:0%"></div>
+        </div>
+        <div class="progress-legend">
+          <span class="legend-dot actual"></span><span>Actual spend</span>
+          <span class="legend-dot planned"></span><span>Planned spend</span>
+        </div>
+      </div>
+
+      <!-- Category cards -->
+      <div class="category-cards">
+        <div class="cat-card a8">
+          <div class="cat-label">A8 Paid Influencers</div>
+          <div class="cat-actual" id="cat-a8_paid-actual">$0</div>
+          <div class="cat-planned" id="cat-a8_paid-planned"></div>
+        </div>
+        <div class="cat-card mg">
+          <div class="cat-label">MadeGood Paid Influencers</div>
+          <div class="cat-actual" id="cat-madegood_paid-actual">$0</div>
+          <div class="cat-planned" id="cat-madegood_paid-planned"></div>
+        </div>
+        <div class="cat-card ship">
+          <div class="cat-label">Shipping &amp; PR Mailers</div>
+          <div class="cat-actual" id="cat-shipping-actual">$0</div>
+          <div class="cat-planned" id="cat-shipping-planned"></div>
+        </div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="filter-tabs">
+        <button class="tab active" data-filter="all">All Entries</button>
+        <button class="tab" data-filter="actual">Actuals</button>
+        <button class="tab" data-filter="planned">Planned</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table class="entries-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Creator / Description</th>
+              <th>Amount</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="entries-tbody">
+            <tr><td colspan="7" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Add Entry Modal -->
+    <div class="modal-overlay hidden" id="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Add Entry</h3>
+          <button class="modal-close" id="modal-close">✕</button>
+        </div>
+        <form id="entry-form">
+          <div class="form-row">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="f-date" required>
+            </div>
+            <div class="field">
+              <label>Type</label>
+              <select id="f-type" required>
+                <option value="actual">Actual</option>
+                <option value="planned">Planned</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <select id="f-category" required>
+              <option value="">— select —</option>
+              <option value="a8_paid">A8 Paid Influencers</option>
+              <option value="madegood_paid">MadeGood Paid Influencers</option>
+              <option value="shipping">Shipping &amp; PR Mailers</option>
+            </select>
+          </div>
+          <div class="field" id="field-handle">
+            <label>Creator Handle</label>
+            <input type="text" id="f-handle" placeholder="@username">
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <input type="text" id="f-description" placeholder="e.g. Wave 1 PR mailers, campaign name…">
+          </div>
+          <div class="field">
+            <label>Amount ($)</label>
+            <input type="number" id="f-amount" min="0" step="0.01" required placeholder="0.00">
+          </div>
+          <div class="field">
+            <label>Notes <span class="opt">(optional)</span></label>
+            <textarea id="f-notes" rows="2" placeholder="Any extra context…"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="btn-cancel">Cancel</button>
+            <button type="submit" class="btn-submit" id="btn-submit">Add Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Confirm delete modal -->
+    <div class="modal-overlay hidden" id="delete-overlay">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h3>Delete entry?</h3>
+        </div>
+        <p style="color:#8b949e;font-size:13px;margin-bottom:20px">This can't be undone.</p>
+        <div class="modal-footer">
+          <button class="btn-cancel" id="delete-cancel">Cancel</button>
+          <button class="btn-delete-confirm" id="delete-confirm">Delete</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
