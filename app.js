@@ -1,241 +1,209 @@
 // MadeGood Budget Tracker
 
 const TOTAL_BUDGET = 500_000;
-const CATEGORIES = {
+const CATS = {
   a8_paid:       'A8 Paid Influencers',
   madegood_paid: 'MadeGood Paid Influencers',
   shipping:      'Shipping & PR Mailers',
 };
 
 const API = `${SUPABASE_URL}/rest/v1/madegood_budget_entries`;
-const HEADERS = {
-  'apikey':        SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
-  'Content-Type':  'application/json',
-};
+const SB  = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
 
-let allEntries    = [];
-let typeFilter    = 'all';       // 'all' | 'actual' | 'planned'
-let categoryFilter = null;       // null | 'a8_paid' | 'madegood_paid' | 'shipping'
-let searchText    = '';
-let sortCol       = 'date';
-let sortDir       = 'desc';
-let currentView   = 'table';
-let calYear       = new Date().getFullYear();
-let calMonth      = new Date().getMonth();
-let pendingDeleteId = null;
+let rows        = [];
+let typeFilter  = 'all';
+let catFilter   = null;
+let search      = '';
+let sortCol     = 'date';
+let sortDir     = 'desc';
+let view        = 'table';
+let calY        = new Date().getFullYear();
+let calM        = new Date().getMonth();
+let deleteId    = null;
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  bindAll();
+  load();
+});
 
-async function init() {
-  setupListeners();
-  await loadEntries();
-}
-
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-async function loadEntries() {
-  const resp = await fetch(`${API}?order=date.desc,created_at.desc`, { headers: HEADERS });
-  if (!resp.ok) {
-    document.getElementById('entries-tbody').innerHTML =
-      `<tr><td colspan="7" class="empty-row">Error loading data.</td></tr>`;
-    return;
-  }
-  allEntries = await resp.json();
+// ── Data ─────────────────────────────────────────────────────────────────────
+async function load() {
+  const r = await fetch(`${API}?order=date.desc,created_at.desc`, { headers: SB });
+  rows = r.ok ? await r.json() : [];
   render();
 }
 
-async function saveEntry(entry) {
-  const resp = await fetch(API, {
+async function insert(entry) {
+  const r = await fetch(API, {
     method: 'POST',
-    headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+    headers: { ...SB, 'Prefer': 'return=minimal' },
     body: JSON.stringify(entry),
   });
-  return resp.ok;
+  return r.ok;
 }
 
-async function deleteEntry(id) {
-  const resp = await fetch(`${API}?id=eq.${id}`, { method: 'DELETE', headers: HEADERS });
-  return resp.ok;
+async function remove(id) {
+  const r = await fetch(`${API}?id=eq.${id}`, { method: 'DELETE', headers: SB });
+  return r.ok;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
-
 function render() {
   renderSummary();
-  if (currentView === 'table') renderTable();
-  else renderCalendar();
+  view === 'calendar' ? renderCal() : renderTable();
 }
 
 function renderSummary() {
-  const actuals  = allEntries.filter(e => e.entry_type === 'actual');
-  const planned  = allEntries.filter(e => e.entry_type === 'planned');
-  const totalActual  = sum(actuals);
-  const totalPlanned = sum(planned);
-  const remaining    = TOTAL_BUDGET - totalActual;
+  const act  = rows.filter(r => r.entry_type === 'actual');
+  const plan = rows.filter(r => r.entry_type === 'planned');
+  const tAct  = sum(act);
+  const tPlan = sum(plan);
 
-  document.getElementById('total-spent').textContent     = fmt(totalActual);
-  document.getElementById('total-remaining').textContent = `${fmt(remaining)} remaining`;
+  setText('total-spent',     fmt(tAct));
+  setText('total-remaining', fmt(TOTAL_BUDGET - tAct) + ' remaining');
 
-  const actualPct  = Math.min((totalActual  / TOTAL_BUDGET) * 100, 100);
-  const plannedPct = Math.min((totalPlanned / TOTAL_BUDGET) * 100, 100 - actualPct);
-  document.getElementById('progress-actual').style.width  = `${actualPct}%`;
-  document.getElementById('progress-planned').style.width = `${plannedPct}%`;
+  const aPct = Math.min(tAct  / TOTAL_BUDGET * 100, 100);
+  const pPct = Math.min(tPlan / TOTAL_BUDGET * 100, 100 - aPct);
+  setStyle('progress-actual',  'width', aPct + '%');
+  setStyle('progress-planned', 'width', pPct + '%');
 
-  for (const cat of Object.keys(CATEGORIES)) {
-    const catActual  = sum(allEntries.filter(e => e.category === cat && e.entry_type === 'actual'));
-    const catPlanned = sum(allEntries.filter(e => e.category === cat && e.entry_type === 'planned'));
-    document.getElementById(`cat-${cat}-actual`).textContent  = fmt(catActual);
-    document.getElementById(`cat-${cat}-planned`).textContent = catPlanned > 0 ? `+ ${fmt(catPlanned)} planned` : '';
+  for (const cat of Object.keys(CATS)) {
+    const ca = sum(rows.filter(r => r.category === cat && r.entry_type === 'actual'));
+    const cp = sum(rows.filter(r => r.category === cat && r.entry_type === 'planned'));
+    setText(`cat-${cat}-actual`,  fmt(ca));
+    setText(`cat-${cat}-planned`, cp > 0 ? '+ ' + fmt(cp) + ' planned' : '');
   }
 }
 
 // ── Table view ────────────────────────────────────────────────────────────────
-
-function getFilteredSorted() {
-  let rows = [...allEntries];
-
-  if (typeFilter !== 'all')   rows = rows.filter(e => e.entry_type === typeFilter);
-  if (categoryFilter)         rows = rows.filter(e => e.category === categoryFilter);
-  if (searchText) {
-    const q = searchText.toLowerCase();
-    rows = rows.filter(e =>
-      (e.creator_handle || '').toLowerCase().includes(q) ||
-      (e.description    || '').toLowerCase().includes(q) ||
-      (e.notes          || '').toLowerCase().includes(q)
+function filtered() {
+  let data = [...rows];
+  if (typeFilter !== 'all') data = data.filter(r => r.entry_type === typeFilter);
+  if (catFilter)            data = data.filter(r => r.category === catFilter);
+  if (search) {
+    const q = search.toLowerCase();
+    data = data.filter(r =>
+      (r.creator_handle || '').toLowerCase().includes(q) ||
+      (r.description    || '').toLowerCase().includes(q) ||
+      (r.notes          || '').toLowerCase().includes(q)
     );
   }
-
-  rows.sort((a, b) => {
-    let av, bv;
-    switch (sortCol) {
-      case 'date':       av = a.date;       bv = b.date;       break;
-      case 'amount':     av = Number(a.amount); bv = Number(b.amount); break;
-      case 'category':   av = a.category;   bv = b.category;   break;
-      case 'entry_type': av = a.entry_type; bv = b.entry_type; break;
-      default:           av = a.date;       bv = b.date;
-    }
+  data.sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (sortCol === 'amount') { av = +av; bv = +bv; }
     if (av < bv) return sortDir === 'asc' ? -1 : 1;
     if (av > bv) return sortDir === 'asc' ?  1 : -1;
     return 0;
   });
-
-  return rows;
+  return data;
 }
 
 function renderTable() {
-  // Update sort icons on headers
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.classList.remove('sort-asc', 'sort-desc');
-    if (th.dataset.col === sortCol) {
-      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
-    }
+  // Update sort arrows in headers
+  document.querySelectorAll('th.sh').forEach(th => {
+    const col = th.dataset.col;
+    const isSorted = col === sortCol;
+    th.classList.toggle('sorted', isSorted);
+    th.textContent = {
+      date:       'Date',
+      entry_type: 'Type',
+      category:   'Category',
+      amount:     'Amount',
+    }[col] + (isSorted ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕');
   });
 
-  const rows = getFilteredSorted();
+  const data = filtered();
   const tbody = document.getElementById('entries-tbody');
 
-  if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-row">No entries match your filters.</td></tr>`;
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">No entries match your filters.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = rows.map(e => {
-    const handle = e.creator_handle
-      ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span> `
-      : '';
-    const desc = e.description ? `<span class="desc-text">${esc(e.description)}</span>` : '';
-    return `
-      <tr class="${e.entry_type === 'planned' ? 'planned-row' : ''}">
-        <td style="white-space:nowrap">${fmtDate(e.date)}</td>
-        <td><span class="type-badge ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
-        <td><span class="cat-badge ${e.category}">${CATEGORIES[e.category] || e.category}</span></td>
-        <td>${handle}${desc}</td>
-        <td class="amount-${e.entry_type}" style="white-space:nowrap">${fmt(Number(e.amount))}</td>
-        <td class="notes-text">${esc(e.notes || '')}</td>
-        <td><button class="btn-row-delete" data-id="${e.id}" title="Delete">✕</button></td>
-      </tr>`;
+  tbody.innerHTML = data.map(e => {
+    const h = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span>` : '';
+    const d = e.description    ? `<span>${esc(e.description)}</span>` : '';
+    return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
+      <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
+      <td><span class="badge-type ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
+      <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
+      <td>${h}${d}</td>
+      <td class="amount-${e.entry_type}" style="white-space:nowrap">${fmt(+e.amount)}</td>
+      <td class="note-text">${esc(e.notes || '')}</td>
+      <td><button class="btn-del" data-id="${e.id}">✕</button></td>
+    </tr>`;
   }).join('');
 
-  tbody.querySelectorAll('.btn-row-delete').forEach(btn => {
-    btn.addEventListener('click', () => confirmDelete(btn.dataset.id));
-  });
+  tbody.querySelectorAll('.btn-del').forEach(b =>
+    b.addEventListener('click', () => openDelete(b.dataset.id))
+  );
 }
 
-// ── Calendar view ─────────────────────────────────────────────────────────────
-
-function renderCalendar() {
+// ── Calendar ──────────────────────────────────────────────────────────────────
+function renderCal() {
   const MONTHS = ['January','February','March','April','May','June',
                   'July','August','September','October','November','December'];
-  document.getElementById('cal-title').textContent = `${MONTHS[calMonth]} ${calYear}`;
+  setText('cal-title', `${MONTHS[calM]} ${calY}`);
 
-  const firstDow   = new Date(calYear, calMonth, 1).getDay();
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const today      = new Date();
-  const todayStr   = today.toISOString().split('T')[0];
+  const todayStr   = new Date().toISOString().split('T')[0];
+  const firstDow   = new Date(calY, calM, 1).getDay();
+  const daysInMo   = new Date(calY, calM + 1, 0).getDate();
 
-  // Group entries by date string
+  // Group entries by YYYY-MM-DD
   const byDay = {};
-  for (const e of allEntries) {
-    const d = new Date(e.date + 'T12:00:00');
-    if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
-      if (!byDay[e.date]) byDay[e.date] = [];
-      byDay[e.date].push(e);
+  rows.forEach(e => {
+    const dt = new Date(e.date + 'T12:00:00');
+    if (dt.getFullYear() === calY && dt.getMonth() === calM) {
+      (byDay[e.date] = byDay[e.date] || []).push(e);
     }
-  }
-
-  const container = document.getElementById('cal-days');
-  let html = '';
-
-  // Leading empty cells
-  for (let i = 0; i < firstDow; i++) {
-    html += `<div class="cal-day empty-day"></div>`;
-  }
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const entries = byDay[dateStr] || [];
-    const isToday = dateStr === todayStr;
-    const hasEntries = entries.length > 0;
-
-    const actualAmt  = sum(entries.filter(e => e.entry_type === 'actual'));
-    const plannedAmt = sum(entries.filter(e => e.entry_type === 'planned'));
-
-    let dots = '';
-    if (actualAmt  > 0) dots += `<div class="cal-entry-dot actual">${fmt(actualAmt)}</div>`;
-    if (plannedAmt > 0) dots += `<div class="cal-entry-dot planned">${fmt(plannedAmt)}</div>`;
-
-    html += `<div class="cal-day${isToday ? ' today' : ''}${!hasEntries ? '' : ' has-entries'}"
-                  data-date="${dateStr}">
-               <div class="cal-day-num">${d}</div>
-               ${dots}
-             </div>`;
-  }
-
-  container.innerHTML = html;
-
-  container.querySelectorAll('.cal-day.has-entries').forEach(cell => {
-    cell.addEventListener('click', () => showCalDetail(cell.dataset.date, byDay[cell.dataset.date]));
   });
 
-  // Hide detail if open
+  let html = '';
+  for (let i = 0; i < firstDow; i++) html += `<div class="cal-day faded"></div>`;
+
+  for (let d = 1; d <= daysInMo; d++) {
+    const ds  = `${calY}-${pad(calM + 1)}-${pad(d)}`;
+    const es  = byDay[ds] || [];
+    const act = sum(es.filter(e => e.entry_type === 'actual'));
+    const pln = sum(es.filter(e => e.entry_type === 'planned'));
+    const cls = [
+      'cal-day',
+      ds === todayStr ? 'is-today' : '',
+      es.length       ? 'clickable' : '',
+    ].filter(Boolean).join(' ');
+
+    html += `<div class="${cls}" data-date="${ds}">
+      <div class="cal-day-num">${d}</div>
+      ${act ? `<div class="cal-dot actual">${fmt(act)}</div>` : ''}
+      ${pln ? `<div class="cal-dot planned">${fmt(pln)}</div>` : ''}
+    </div>`;
+  }
+
+  document.getElementById('cal-days').innerHTML = html;
   document.getElementById('cal-detail').classList.add('hidden');
+
+  document.querySelectorAll('.cal-day.clickable').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const ds = cell.dataset.date;
+      showCalDetail(ds, byDay[ds] || []);
+    });
+  });
 }
 
-function showCalDetail(dateStr, entries) {
+function showCalDetail(ds, entries) {
   const detail = document.getElementById('cal-detail');
-  document.getElementById('cal-detail-date').textContent = fmtDateLong(dateStr);
+  setText('cal-detail-date', fmtDateLong(ds));
 
-  const tbody = document.getElementById('cal-detail-tbody');
-  tbody.innerHTML = entries.map(e => {
-    const handle = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span> ` : '';
-    const desc   = e.description ? `<span class="desc-text">${esc(e.description)}</span>` : '';
-    return `<tr class="${e.entry_type === 'planned' ? 'planned-row' : ''}">
-      <td><span class="type-badge ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
-      <td><span class="cat-badge ${e.category}">${CATEGORIES[e.category] || e.category}</span></td>
-      <td>${handle}${desc}</td>
-      <td class="amount-${e.entry_type}">${fmt(Number(e.amount))}</td>
-      <td class="notes-text">${esc(e.notes || '')}</td>
+  document.getElementById('cal-detail-tbody').innerHTML = entries.map(e => {
+    const h = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span>` : '';
+    const d = e.description    ? `<span>${esc(e.description)}</span>` : '';
+    return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
+      <td><span class="badge-type ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
+      <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
+      <td>${h}${d}</td>
+      <td class="amount-${e.entry_type}">${fmt(+e.amount)}</td>
+      <td class="note-text">${esc(e.notes || '')}</td>
     </tr>`;
   }).join('');
 
@@ -243,98 +211,87 @@ function showCalDetail(dateStr, entries) {
   detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// ── Form ──────────────────────────────────────────────────────────────────────
+// ── Bind events ───────────────────────────────────────────────────────────────
+function bindAll() {
 
-async function handleSubmit(e) {
-  e.preventDefault();
-  const btn = document.getElementById('btn-submit');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-
-  const category = document.getElementById('f-category').value;
-  const isPaid   = ['a8_paid', 'madegood_paid'].includes(category);
-
-  const entry = {
-    date:           document.getElementById('f-date').value,
-    entry_type:     document.getElementById('f-type').value,
-    category,
-    creator_handle: isPaid ? (document.getElementById('f-handle').value.trim().replace(/^@/, '') || null) : null,
-    description:    document.getElementById('f-description').value.trim() || null,
-    amount:         parseFloat(document.getElementById('f-amount').value),
-    notes:          document.getElementById('f-notes').value.trim() || null,
-  };
-
-  const ok = await saveEntry(entry);
-  btn.disabled = false;
-  btn.textContent = 'Add Entry';
-
-  if (!ok) { alert('Error saving entry. Please try again.'); return; }
-  closeModal();
-  await loadEntries();
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-
-function openModal() {
-  document.getElementById('entry-form').reset();
-  document.getElementById('f-date').value = today();
-  document.getElementById('field-handle').classList.remove('hidden');
-  document.getElementById('modal-overlay').classList.remove('hidden');
-}
-
-function closeModal() {
-  document.getElementById('modal-overlay').classList.add('hidden');
-}
-
-function confirmDelete(id) {
-  pendingDeleteId = id;
-  document.getElementById('delete-overlay').classList.remove('hidden');
-}
-
-function closeDeleteModal() {
-  pendingDeleteId = null;
-  document.getElementById('delete-overlay').classList.add('hidden');
-}
-
-// ── Listeners ─────────────────────────────────────────────────────────────────
-
-function setupListeners() {
+  // Add entry
   document.getElementById('btn-add-entry').addEventListener('click', openModal);
   document.getElementById('modal-close').addEventListener('click', closeModal);
   document.getElementById('btn-cancel').addEventListener('click', closeModal);
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target.id === 'modal-overlay') closeModal();
   });
-  document.getElementById('entry-form').addEventListener('submit', handleSubmit);
+  document.getElementById('entry-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const cat  = document.getElementById('f-category').value;
+    const paid = ['a8_paid','madegood_paid'].includes(cat);
+    const ok = await insert({
+      date:           document.getElementById('f-date').value,
+      entry_type:     document.getElementById('f-type').value,
+      category:       cat,
+      creator_handle: paid ? (document.getElementById('f-handle').value.trim().replace(/^@/,'') || null) : null,
+      description:    document.getElementById('f-description').value.trim() || null,
+      amount:         parseFloat(document.getElementById('f-amount').value),
+      notes:          document.getElementById('f-notes').value.trim() || null,
+    });
+    btn.disabled = false; btn.textContent = 'Add Entry';
+    if (!ok) { alert('Error saving — please try again.'); return; }
+    closeModal();
+    await load();
+  });
 
-  // Category card click — filter table
+  // Show/hide handle field based on category
+  document.getElementById('f-category').addEventListener('change', e => {
+    const show = ['a8_paid','madegood_paid'].includes(e.target.value);
+    document.getElementById('field-handle').classList.toggle('hidden', !show);
+  });
+
+  // Delete
+  document.getElementById('delete-cancel').addEventListener('click', closeDelete);
+  document.getElementById('delete-overlay').addEventListener('click', e => {
+    if (e.target.id === 'delete-overlay') closeDelete();
+  });
+  document.getElementById('delete-confirm').addEventListener('click', async () => {
+    if (!deleteId) return;
+    await remove(deleteId);
+    closeDelete();
+    await load();
+  });
+
+  // Category cards — click to filter
   document.querySelectorAll('.cat-card').forEach(card => {
     card.addEventListener('click', () => {
       const cat = card.dataset.cat;
-      if (categoryFilter === cat) {
-        categoryFilter = null;
-        card.classList.remove('active-filter');
+      if (catFilter === cat) {
+        catFilter = null;
+        card.classList.remove('selected');
+        document.getElementById('filter-banner').classList.add('hidden');
       } else {
-        categoryFilter = cat;
-        document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active-filter'));
-        card.classList.add('active-filter');
-        // Switch to table view so filter is visible
-        switchView('table');
+        catFilter = cat;
+        document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        setText('filter-banner-label', CATS[cat]);
+        document.getElementById('filter-banner').classList.remove('hidden');
+        if (view !== 'table') switchView('table');
       }
       renderTable();
     });
   });
 
-  // Show/hide creator handle field
-  document.getElementById('f-category').addEventListener('change', e => {
-    const show = ['a8_paid', 'madegood_paid'].includes(e.target.value);
-    document.getElementById('field-handle').classList.toggle('hidden', !show);
+  // Clear filter banner
+  document.getElementById('filter-clear').addEventListener('click', () => {
+    catFilter = null;
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('filter-banner').classList.add('hidden');
+    renderTable();
   });
 
   // Type filter tabs
-  document.querySelectorAll('.tab').forEach(tab => {
+  document.querySelectorAll('.ttab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.ttab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       typeFilter = tab.dataset.filter;
       renderTable();
@@ -343,97 +300,92 @@ function setupListeners() {
 
   // Search
   document.getElementById('search-input').addEventListener('input', e => {
-    searchText = e.target.value;
+    search = e.target.value;
     renderTable();
   });
 
-  // Column sort
-  document.querySelectorAll('th.sortable').forEach(th => {
+  // Sort — click column header
+  document.querySelectorAll('th.sh').forEach(th => {
     th.addEventListener('click', () => {
-      if (sortCol === th.dataset.col) {
+      const col = th.dataset.col;
+      if (sortCol === col) {
         sortDir = sortDir === 'asc' ? 'desc' : 'asc';
       } else {
-        sortCol = th.dataset.col;
-        sortDir = th.dataset.col === 'amount' ? 'desc' : 'asc';
+        sortCol = col;
+        sortDir = col === 'amount' ? 'desc' : 'asc';
       }
       renderTable();
     });
   });
 
-  // View tabs
-  document.querySelectorAll('.view-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchView(tab.dataset.view));
-  });
+  // View toggle
+  document.getElementById('vt-table').addEventListener('click',    () => switchView('table'));
+  document.getElementById('vt-calendar').addEventListener('click', () => switchView('calendar'));
 
   // Calendar nav
   document.getElementById('cal-prev').addEventListener('click', () => {
-    calMonth--;
-    if (calMonth < 0) { calMonth = 11; calYear--; }
-    renderCalendar();
+    if (--calM < 0) { calM = 11; calY--; }
+    renderCal();
   });
   document.getElementById('cal-next').addEventListener('click', () => {
-    calMonth++;
-    if (calMonth > 11) { calMonth = 0; calYear++; }
-    renderCalendar();
+    if (++calM > 11) { calM = 0; calY++; }
+    renderCal();
   });
   document.getElementById('cal-detail-close').addEventListener('click', () => {
     document.getElementById('cal-detail').classList.add('hidden');
   });
-
-  // Delete
-  document.getElementById('delete-cancel').addEventListener('click', closeDeleteModal);
-  document.getElementById('delete-overlay').addEventListener('click', e => {
-    if (e.target.id === 'delete-overlay') closeDeleteModal();
-  });
-  document.getElementById('delete-confirm').addEventListener('click', async () => {
-    if (!pendingDeleteId) return;
-    await deleteEntry(pendingDeleteId);
-    closeDeleteModal();
-    await loadEntries();
-  });
 }
 
-function switchView(view) {
-  currentView = view;
-  document.querySelectorAll('.view-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.view === view);
-  });
-  document.getElementById('view-table').classList.toggle('hidden', view !== 'table');
-  document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
-  if (view === 'calendar') renderCalendar();
-  else renderTable();
+function switchView(v) {
+  view = v;
+  document.getElementById('vt-table').classList.toggle('active',    v === 'table');
+  document.getElementById('vt-calendar').classList.toggle('active', v === 'calendar');
+  document.getElementById('view-table').classList.toggle('hidden',    v !== 'table');
+  document.getElementById('view-calendar').classList.toggle('hidden', v !== 'calendar');
+  v === 'calendar' ? renderCal() : renderTable();
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function sum(entries) {
-  return entries.reduce((s, e) => s + Number(e.amount), 0);
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('entry-form').reset();
+  document.getElementById('f-date').value = todayStr();
+  document.getElementById('field-handle').classList.remove('hidden');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+function openDelete(id) {
+  deleteId = id;
+  document.getElementById('delete-overlay').classList.remove('hidden');
+}
+function closeDelete() {
+  deleteId = null;
+  document.getElementById('delete-overlay').classList.add('hidden');
 }
 
-function fmt(n) {
-  return '$' + Math.round(n).toLocaleString('en-US');
-}
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function sum(arr) { return arr.reduce((s, r) => s + Number(r.amount), 0); }
+function fmt(n)   { return '$' + Math.round(n).toLocaleString('en-US'); }
+function pad(n)   { return String(n).padStart(2, '0'); }
+function todayStr() { return new Date().toISOString().split('T')[0]; }
 
-function fmtDate(str) {
-  if (!str) return '';
-  const [y, m, d] = str.split('-');
-  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+function fmtDate(s) {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${+m}/${+d}/${y}`;
 }
-
-function fmtDateLong(str) {
-  if (!str) return '';
-  const d = new Date(str + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+function fmtDateLong(s) {
+  if (!s) return '';
+  return new Date(s + 'T12:00:00').toLocaleDateString('en-US',
+    { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
-
-function today() {
-  return new Date().toISOString().split('T')[0];
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
 }
-
-function esc(str) {
-  return String(str)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function setStyle(id, prop, val) {
+  const el = document.getElementById(id);
+  if (el) el.style[prop] = val;
 }
-
-document.addEventListener('DOMContentLoaded', init);
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
