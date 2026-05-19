@@ -226,6 +226,12 @@ body {
 }
 .cal-btn:hover { background: #1c2128; }
 
+.cal-key {
+  display: flex; align-items: center;
+  gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.cal-key-dim { font-size: 11px; color: #555; margin-left: 4px; }
+
 .cal-dow-row {
   display: grid; grid-template-columns: repeat(7, 1fr);
   gap: 3px; margin-bottom: 3px;
