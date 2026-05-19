@@ -254,8 +254,10 @@ body {
   padding: 2px 6px; border-radius: 3px;
   display: inline-block; margin-bottom: 3px;
 }
-.cal-dot.actual  { background: #0d2d1a; color: #3fb950; }
-.cal-dot.planned { background: #0d1f3c; color: #58a6ff; }
+.cal-dot.a8_paid       { background: #2d1f5e; color: #a78bfa; }
+.cal-dot.madegood_paid { background: #0f2044; color: #60a5fa; }
+.cal-dot.shipping      { background: #2d1f0f; color: #fb923c; }
+.cal-dot.cal-dot-plan  { opacity: 0.55; }
 
 .cal-detail {
   background: #161b22; border: 1px solid #30363d;

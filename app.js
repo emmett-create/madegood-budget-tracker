@@ -165,18 +165,25 @@ function renderCal() {
   for (let d = 1; d <= daysInMo; d++) {
     const ds  = `${calY}-${pad(calM + 1)}-${pad(d)}`;
     const es  = byDay[ds] || [];
-    const act = sum(es.filter(e => e.entry_type === 'actual'));
-    const pln = sum(es.filter(e => e.entry_type === 'planned'));
     const cls = [
       'cal-day',
       ds === todayStr ? 'is-today' : '',
       es.length       ? 'clickable' : '',
     ].filter(Boolean).join(' ');
 
+    // Show one pill per category that has entries, colored by category.
+    // Planned-only entries get a dimmer style; mixed actual+planned shows full color.
+    const catPills = Object.keys(CATS).map(cat => {
+      const catEs  = es.filter(e => e.category === cat);
+      if (!catEs.length) return '';
+      const total   = sum(catEs);
+      const allPlan = catEs.every(e => e.entry_type === 'planned');
+      return `<div class="cal-dot ${cat}${allPlan ? ' cal-dot-plan' : ''}">${fmt(total)}</div>`;
+    }).join('');
+
     html += `<div class="${cls}" data-date="${ds}">
       <div class="cal-day-num">${d}</div>
-      ${act ? `<div class="cal-dot actual">${fmt(act)}</div>` : ''}
-      ${pln ? `<div class="cal-dot planned">${fmt(pln)}</div>` : ''}
+      ${catPills}
     </div>`;
   }
 
