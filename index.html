@@ -42,48 +42,91 @@
 
       <!-- Category cards -->
       <div class="category-cards">
-        <div class="cat-card a8">
+        <div class="cat-card a8" id="cat-card-a8_paid" data-cat="a8_paid" title="Click to filter">
           <div class="cat-label">A8 Paid Influencers</div>
           <div class="cat-actual" id="cat-a8_paid-actual">$0</div>
           <div class="cat-planned" id="cat-a8_paid-planned"></div>
         </div>
-        <div class="cat-card mg">
+        <div class="cat-card mg" id="cat-card-madegood_paid" data-cat="madegood_paid" title="Click to filter">
           <div class="cat-label">MadeGood Paid Influencers</div>
           <div class="cat-actual" id="cat-madegood_paid-actual">$0</div>
           <div class="cat-planned" id="cat-madegood_paid-planned"></div>
         </div>
-        <div class="cat-card ship">
+        <div class="cat-card ship" id="cat-card-shipping" data-cat="shipping" title="Click to filter">
           <div class="cat-label">Shipping &amp; PR Mailers</div>
           <div class="cat-actual" id="cat-shipping-actual">$0</div>
           <div class="cat-planned" id="cat-shipping-planned"></div>
         </div>
       </div>
 
-      <!-- Filter tabs -->
-      <div class="filter-tabs">
-        <button class="tab active" data-filter="all">All Entries</button>
-        <button class="tab" data-filter="actual">Actuals</button>
-        <button class="tab" data-filter="planned">Planned</button>
+      <!-- View tabs -->
+      <div class="view-tabs">
+        <button class="view-tab active" data-view="table">List</button>
+        <button class="view-tab" data-view="calendar">Calendar</button>
       </div>
 
-      <!-- Table -->
-      <div class="table-wrap">
-        <table class="entries-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Creator / Description</th>
-              <th>Amount</th>
-              <th>Notes</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="entries-tbody">
-            <tr><td colspan="7" class="empty-row">Loading…</td></tr>
-          </tbody>
-        </table>
+      <!-- TABLE VIEW -->
+      <div id="view-table">
+        <div class="table-controls">
+          <div class="filter-tabs">
+            <button class="tab active" data-filter="all">All Entries</button>
+            <button class="tab" data-filter="actual">Actuals</button>
+            <button class="tab" data-filter="planned">Planned</button>
+          </div>
+          <input type="search" id="search-input" class="search-input" placeholder="Search creator or description…">
+        </div>
+
+        <div class="table-wrap">
+          <table class="entries-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="date">Date <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="entry_type">Type <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="category">Category <span class="sort-icon">↕</span></th>
+                <th>Creator / Description</th>
+                <th class="sortable" data-col="amount">Amount <span class="sort-icon">↕</span></th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="entries-tbody">
+              <tr><td colspan="7" class="empty-row">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CALENDAR VIEW -->
+      <div id="view-calendar" class="hidden">
+        <div class="cal-header">
+          <button class="cal-nav" id="cal-prev">&#8592;</button>
+          <span class="cal-title" id="cal-title"></span>
+          <button class="cal-nav" id="cal-next">&#8594;</button>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-dow">Sun</div>
+          <div class="cal-dow">Mon</div>
+          <div class="cal-dow">Tue</div>
+          <div class="cal-dow">Wed</div>
+          <div class="cal-dow">Thu</div>
+          <div class="cal-dow">Fri</div>
+          <div class="cal-dow">Sat</div>
+        </div>
+        <div class="cal-days" id="cal-days"></div>
+        <div class="cal-detail hidden" id="cal-detail">
+          <div class="cal-detail-header">
+            <span id="cal-detail-date"></span>
+            <button class="cal-detail-close" id="cal-detail-close">✕</button>
+          </div>
+          <table class="entries-table">
+            <thead>
+              <tr>
+                <th>Type</th><th>Category</th><th>Creator / Description</th><th>Amount</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="cal-detail-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
     </div>
