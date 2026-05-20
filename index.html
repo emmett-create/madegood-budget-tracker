@@ -1,18 +1,18 @@
 <!DOCTYPE html>                                                                                                                                                                                           
-  <html lang="en">                                                                                                                                                                                          
+  <html lang="en">
   <head>                                                                                                                                                                                                    
-    <meta charset="utf-8">                                                                                                                                                                                  
+    <meta charset="utf-8">                                  
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MadeGood — Budget Tracker</title>
     <link rel="stylesheet" href="style.css">                                                                                                                                                                
   </head>
   <body>                                                                                                                                                                                                    
   <div class="app">                                         
-
-    <header class="header">                                                                                                                                                                                 
-      <div class="header-inner">
-        <div class="header-left">                                                                                                                                                                           
-          <span class="logo">Agency 8</span>                
+                                                                                                                                                                                                            
+    <header class="header">
+      <div class="header-inner">                                                                                                                                                                            
+        <div class="header-left">                           
+          <span class="logo">Agency 8</span>
           <span class="logo-sub">MadeGood Budget Tracker</span>                                                                                                                                             
         </div>
         <button class="btn-add" id="btn-add-entry">+ Add Entry</button>                                                                                                                                     
@@ -34,73 +34,73 @@
           <div class="progress-fill actual" id="progress-actual" style="width:0%"></div>                                                                                                                    
           <div class="progress-fill planned" id="progress-planned" style="width:0%"></div>
         </div>                                                                                                                                                                                              
-        <div class="legend">                                
+        <div class="legend">
           <span class="legend-dot actual"></span> Actual &nbsp;&nbsp;                                                                                                                                       
           <span class="legend-dot planned"></span> Planned                                                                                                                                                  
         </div>
       </div>                                                                                                                                                                                                
                                                             
-      <!-- Category cards -->
+      <!-- Category cards -->                                                                                                                                                                               
       <div class="cat-grid">
-        <div class="cat-card a8"   id="cc-a8_paid"       data-cat="a8_paid">
+        <div class="cat-card a8"   id="cc-a8_paid"       data-cat="a8_paid">                                                                                                                                
           <div class="cc-label">A8 Paid Influencers</div>                                                                                                                                                   
           <div class="cc-num"   id="cat-a8_paid-actual">$0</div>
           <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-a8_paid-bar" style="width:0%"></div></div>                                                                                              
           <div class="cc-plan"  id="cat-a8_paid-planned"></div>                                                                                                                                             
-          <div class="cc-hint">Click to filter</div>                                                                                                                                                        
+          <div class="cc-hint">Click to filter</div>
         </div>                                                                                                                                                                                              
-        <div class="cat-card mg"   id="cc-madegood_paid"  data-cat="madegood_paid">                                                                                                                         
+        <div class="cat-card mg"   id="cc-madegood_paid"  data-cat="madegood_paid">
           <div class="cc-label">MadeGood Paid Influencers</div>                                                                                                                                             
           <div class="cc-num"   id="cat-madegood_paid-actual">$0</div>
           <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-madegood_paid-bar" style="width:0%"></div></div>                                                                                        
-          <div class="cc-plan"  id="cat-madegood_paid-planned"></div>                                                                                                                                       
+          <div class="cc-plan"  id="cat-madegood_paid-planned"></div>
           <div class="cc-hint">Click to filter</div>                                                                                                                                                        
-        </div>                                                                                                                                                                                              
+        </div>                                              
         <div class="cat-card ship" id="cc-shipping"       data-cat="shipping">                                                                                                                              
-          <div class="cc-label">Shipping &amp; PR Mailers</div>
-          <div class="cc-num"   id="cat-shipping-actual">$0</div>                                                                                                                                           
-          <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-shipping-bar" style="width:0%"></div></div>
-          <div class="cc-plan"  id="cat-shipping-planned"></div>                                                                                                                                            
-          <div class="cc-hint">Click to filter</div>        
-        </div>                                                                                                                                                                                              
-      </div>                                                
-                                                                                                                                                                                                            
-      <!-- Active filter banner -->                         
-      <div class="filter-banner hidden" id="filter-banner">
-        Showing: <strong id="filter-banner-label"></strong>
-        <button class="filter-clear" id="filter-clear">✕ Clear filter</button>                                                                                                                              
+          <div class="cc-label">Shipping &amp; PR Mailers</div>                                                                                                                                             
+          <div class="cc-num"   id="cat-shipping-actual">$0</div>
+          <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-shipping-bar" style="width:0%"></div></div>                                                                                             
+          <div class="cc-plan"  id="cat-shipping-planned"></div>
+          <div class="cc-hint">Click to filter</div>                                                                                                                                                        
+        </div>                                              
       </div>                                                                                                                                                                                                
-                                                                                                                                                                                                            
+                                                            
+      <!-- Active filter banner -->                                                                                                                                                                         
+      <div class="filter-banner hidden" id="filter-banner">
+        Showing: <strong id="filter-banner-label"></strong>                                                                                                                                                 
+        <button class="filter-clear" id="filter-clear">✕ Clear filter</button>
+      </div>                                                                                                                                                                                                
+   
       <!-- View toggle -->                                                                                                                                                                                  
       <div class="view-toggle">                             
-        <button class="vt-btn active" data-view="table" id="vt-table">☰ List</button>
+        <button class="vt-btn active" data-view="table" id="vt-table">☰ List</button>                                                                                                                       
         <button class="vt-btn"        data-view="calendar" id="vt-calendar">📅 Calendar</button>                                                                                                            
       </div>                                                                                                                                                                                                
                                                                                                                                                                                                             
-      <!-- LIST VIEW -->                                                                                                                                                                                    
-      <div id="view-table">                                 
-        <div class="toolbar">
+      <!-- LIST VIEW -->                                    
+      <div id="view-table">
+        <div class="toolbar">                                                                                                                                                                               
           <div class="type-tabs">
-            <button class="ttab active" data-filter="all">All</button>
+            <button class="ttab active" data-filter="all">All</button>                                                                                                                                      
             <button class="ttab" data-filter="actual">Actuals</button>                                                                                                                                      
             <button class="ttab" data-filter="planned">Planned</button>
           </div>                                                                                                                                                                                            
           <input type="search" id="search-input" class="search-box" placeholder="Search creator, description…">
         </div>                                                                                                                                                                                              
-        <div class="table-wrap">                            
+        <div class="table-wrap">
           <table class="tbl">                                                                                                                                                                               
             <thead>                                         
-              <tr>
-                <th class="sh" data-col="date">Date</th>
-                <th class="sh" data-col="entry_type">Type</th>                                                                                                                                              
-                <th class="sh" data-col="category">Category</th>
-                <th>Creator / Description</th>                                                                                                                                                              
+              <tr>                                                                                                                                                                                          
+                <th class="sh" data-col="date">Date</th>    
+                <th class="sh" data-col="entry_type">Type</th>
+                <th class="sh" data-col="category">Category</th>                                                                                                                                            
+                <th>Creator / Description</th>
                 <th class="sh" data-col="amount">Amount</th>                                                                                                                                                
-                <th>Notes</th>
+                <th>Notes</th>                              
                 <th></th>                                                                                                                                                                                   
-              </tr>                                         
-            </thead>                                                                                                                                                                                        
-            <tbody id="entries-tbody">                      
+              </tr>                                                                                                                                                                                         
+            </thead>
+            <tbody id="entries-tbody">                                                                                                                                                                      
               <tr><td colspan="7" class="empty-cell">Loading…</td></tr>
             </tbody>                                                                                                                                                                                        
           </table>
@@ -112,20 +112,20 @@
         <div class="cal-nav-row">                                                                                                                                                                           
           <button class="cal-btn" id="cal-prev">← Prev</button>
           <span class="cal-month-label" id="cal-title"></span>                                                                                                                                              
-          <button class="cal-btn" id="cal-next">Next →</button>
+          <button class="cal-btn" id="cal-next">Next →</button>                                                                                                                                             
         </div>                                                                                                                                                                                              
-        <div class="cal-key">                               
+        <div class="cal-key">                                                                                                                                                                               
           <span class="cal-dot a8_paid">A8 Paid Influencers</span>
-          <span class="cal-dot madegood_paid">MadeGood Paid Influencers</span>
-          <span class="cal-dot shipping">Shipping &amp; PR Mailers</span>
-          <span class="cal-key-dim">Dimmed = planned only</span>
-        </div>
-        <div class="cal-dow-row">
-          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div>
+          <span class="cal-dot madegood_paid">MadeGood Paid Influencers</span>                                                                                                                              
+          <span class="cal-dot shipping">Shipping &amp; PR Mailers</span>                                                                                                                                   
+          <span class="cal-key-dim">Dimmed = planned only</span>                                                                                                                                            
+        </div>                                                                                                                                                                                              
+        <div class="cal-dow-row">                           
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div>                                                                                                                                          
           <div>Thu</div><div>Fri</div><div>Sat</div>                                                                                                                                                        
-        </div>
+        </div>                                                                                                                                                                                              
         <div class="cal-grid" id="cal-days"></div>                                                                                                                                                          
-        <div class="cal-detail hidden" id="cal-detail">     
+        <div class="cal-detail hidden" id="cal-detail">                                                                                                                                                     
           <div class="cal-detail-hdr">                                                                                                                                                                      
             <span id="cal-detail-date"></span>
             <button class="cal-close" id="cal-detail-close">✕</button>                                                                                                                                      
@@ -133,9 +133,9 @@
           <table class="tbl">
             <thead>                                                                                                                                                                                         
               <tr><th>Type</th><th>Category</th><th>Creator / Description</th><th>Amount</th><th>Notes</th></tr>
-            </thead>
+            </thead>                                                                                                                                                                                        
             <tbody id="cal-detail-tbody"></tbody>
-          </table>
+          </table>                                                                                                                                                                                          
         </div>                                                                                                                                                                                              
       </div>
                                                                                                                                                                                                             
@@ -143,14 +143,14 @@
 
     <!-- Add / Edit Entry Modal -->
     <div class="overlay hidden" id="modal-overlay">
-      <div class="modal">
+      <div class="modal">                                                                                                                                                                                   
         <div class="modal-hdr">
-          <h3 id="modal-title">Add Entry</h3>
+          <h3 id="modal-title">Add Entry</h3>                                                                                                                                                               
           <button class="modal-x" id="modal-close">✕</button>
-        </div>
+        </div>                                                                                                                                                                                              
         <form id="entry-form">
-          <div class="form-row">
-            <div class="fld">
+          <div class="form-row">                                                                                                                                                                            
+            <div class="fld">                               
               <label>Date</label>                                                                                                                                                                           
               <input type="date" id="f-date" required>
             </div>                                                                                                                                                                                          
@@ -163,10 +163,10 @@
             </div>                                          
           </div>
           <div class="fld">
-            <label>Category</label>                                                                                                                                                                         
-            <select id="f-category" required>
-              <option value="">— select —</option>                                                                                                                                                          
-              <option value="a8_paid">A8 Paid Influencers</option>
+            <label>Category</label>
+            <select id="f-category" required>                                                                                                                                                               
+              <option value="">— select —</option>
+              <option value="a8_paid">A8 Paid Influencers</option>                                                                                                                                          
               <option value="madegood_paid">MadeGood Paid Influencers</option>                                                                                                                              
               <option value="shipping">Shipping &amp; PR Mailers</option>
             </select>                                                                                                                                                                                       
@@ -181,53 +181,54 @@
           </div>                                                                                                                                                                                            
           <div class="fld">
             <label>Amount ($)</label>                                                                                                                                                                       
-            <input type="number" id="f-amount" min="0" step="0.01" required placeholder="0.00">                                                                                                             
-          </div>
-          <div class="fld">                                                                                                                                                                                 
+            <input type="number" id="f-amount" min="0" step="0.01" required placeholder="0.00">
+          </div>                                                                                                                                                                                            
+          <div class="fld">
             <label>Notes <span style="font-weight:400;text-transform:none;font-size:10px">(optional)</span></label>                                                                                         
             <textarea id="f-notes" rows="2" placeholder="Any extra context…"></textarea>                                                                                                                    
           </div>                                                                                                                                                                                            
           <div class="modal-footer">                                                                                                                                                                        
             <button type="button" class="btn-sec" id="btn-cancel">Cancel</button>                                                                                                                           
-            <button type="submit" class="btn-pri" id="btn-submit">Add Entry</button>                                                                                                                        
-          </div>
-        </form>                                                                                                                                                                                             
-      </div>                                                
-    </div>                                                                                                                                                                                                  
-  
-    <!-- Convert to Actual -->                                                                                                                                                                              
-    <div class="overlay hidden" id="convert-overlay">       
-      <div class="modal modal-sm">
-        <div class="modal-hdr">                                                                                                                                                                             
-          <h3>Convert to Actual</h3>
-          <button class="modal-x" id="convert-close">✕</button>                                                                                                                                             
-        </div>                                              
-        <p style="color:#8b949e;font-size:13px;margin-bottom:16px">Planned: <strong id="convert-planned-amt" style="color:#58a6ff"></strong></p>                                                            
-        <div class="fld">                                                                                                                                                                                   
-          <label>Actual Amount ($)</label>                                                                                                                                                                  
-          <input type="number" id="convert-amount" min="0" step="0.01" placeholder="0.00">                                                                                                                  
-        </div>                                              
-        <div class="modal-footer">                                                                                                                                                                          
-          <button class="btn-sec" id="convert-cancel">Cancel</button>
-          <button class="btn-pri" id="convert-confirm">Mark as Actual</button>                                                                                                                              
-        </div>
+            <button type="submit" class="btn-pri" id="btn-submit">Add Entry</button>
+          </div>                                                                                                                                                                                            
+        </form>
       </div>                                                                                                                                                                                                
-    </div>                                                                                                                                                                                                  
-  
-    <!-- Delete confirm -->                                                                                                                                                                                 
-    <div class="overlay hidden" id="delete-overlay">        
-      <div class="modal modal-sm">
-        <div class="modal-hdr"><h3>Delete this entry?</h3></div>
-        <p style="color:#8b949e;font-size:13px;margin-bottom:20px">This cannot be undone.</p>                                                                                                               
-        <div class="modal-footer">
-          <button class="btn-sec" id="delete-cancel">Cancel</button>                                                                                                                                        
-          <button class="btn-danger" id="delete-confirm">Delete</button>
+    </div>                                                  
+
+    <!-- Convert to Actual -->                                                                                                                                                                              
+    <div class="overlay hidden" id="convert-overlay">
+      <div class="modal modal-sm">                                                                                                                                                                          
+        <div class="modal-hdr">                             
+          <h3>Convert to Actual</h3>                                                                                                                                                                        
+          <button class="modal-x" id="convert-close">✕</button>
         </div>                                                                                                                                                                                              
-      </div>                                                
-    </div>
-                                                                                                                                                                                                            
+        <p style="color:#8b949e;font-size:13px;margin-bottom:16px">Planned: <strong id="convert-planned-amt" style="color:#58a6ff"></strong></p>
+        <div class="fld">                                                                                                                                                                                   
+          <label>Actual Amount ($)</label>
+          <input type="number" id="convert-amount" min="0" step="0.01" placeholder="0.00">                                                                                                                  
+          <div id="convert-diff" class="convert-diff"></div>                                                                                                                                                
+        </div>                                                                                                                                                                                              
+        <div class="modal-footer">                                                                                                                                                                          
+          <button class="btn-sec" id="convert-cancel">Cancel</button>                                                                                                                                       
+          <button class="btn-pri" id="convert-confirm">Mark as Actual</button>
+        </div>                                                                                                                                                                                              
+      </div>
+    </div>                                                                                                                                                                                                  
+                                                            
+    <!-- Delete confirm -->
+    <div class="overlay hidden" id="delete-overlay">
+      <div class="modal modal-sm">
+        <div class="modal-hdr"><h3>Delete this entry?</h3></div>                                                                                                                                            
+        <p style="color:#8b949e;font-size:13px;margin-bottom:20px">This cannot be undone.</p>
+        <div class="modal-footer">                                                                                                                                                                          
+          <button class="btn-sec" id="delete-cancel">Cancel</button>
+          <button class="btn-danger" id="delete-confirm">Delete</button>                                                                                                                                    
+        </div>                                                                                                                                                                                              
+      </div>
+    </div>                                                                                                                                                                                                  
+                                                            
   </div>
-  <script src="config.js"></script>                                                                                                                                                                         
-  <script src="app.js"></script>                            
+  <script src="config.js"></script>
+  <script src="app.js"></script>
   </body>
   </html>
