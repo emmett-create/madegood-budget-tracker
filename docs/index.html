@@ -75,6 +75,7 @@
     <div class="view-toggle">
       <button class="vt-btn active" data-view="table" id="vt-table">☰ List</button>
       <button class="vt-btn"        data-view="calendar" id="vt-calendar">📅 Calendar</button>
+      <button class="vt-btn"        data-view="invoice"  id="vt-invoice">✓ Ready to Invoice</button>
     </div>
 
     <!-- LIST VIEW -->
@@ -136,6 +137,28 @@
             <tr><th>Type</th><th>Category</th><th>Creator / Description</th><th>Amount</th><th>Notes</th></tr>
           </thead>
           <tbody id="cal-detail-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- INVOICE VIEW -->
+    <div id="view-invoice" class="hidden">
+      <div class="invoice-summary" id="invoice-summary"></div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th class="sh" data-col="date">Date</th>
+              <th class="sh" data-col="category">Category</th>
+              <th>Creator / Description</th>
+              <th class="sh" data-col="amount">Amount</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="invoice-tbody">
+            <tr><td colspan="6" class="empty-cell">No entries marked ready to invoice.</td></tr>
+          </tbody>
         </table>
       </div>
     </div>

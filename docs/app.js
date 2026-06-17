@@ -431,6 +431,7 @@ function bindAll() {
   // View toggle
   document.getElementById('vt-table').addEventListener('click',    () => switchView('table'));
   document.getElementById('vt-calendar').addEventListener('click', () => switchView('calendar'));
+  document.getElementById('vt-invoice').addEventListener('click',  () => switchView('invoice'));
 
   // Calendar nav
   document.getElementById('cal-prev').addEventListener('click', () => {
@@ -450,9 +451,60 @@ function switchView(v) {
   view = v;
   document.getElementById('vt-table').classList.toggle('active',    v === 'table');
   document.getElementById('vt-calendar').classList.toggle('active', v === 'calendar');
+  document.getElementById('vt-invoice').classList.toggle('active',  v === 'invoice');
   document.getElementById('view-table').classList.toggle('hidden',    v !== 'table');
   document.getElementById('view-calendar').classList.toggle('hidden', v !== 'calendar');
-  v === 'calendar' ? renderCal() : renderTable();
+  document.getElementById('view-invoice').classList.toggle('hidden',  v !== 'invoice');
+  if (v === 'calendar') renderCal();
+  else if (v === 'invoice') renderInvoice();
+  else renderTable();
+}
+
+function renderInvoice() {
+  const data = rows.filter(r => r.ready_to_invoice);
+  const total = sum(data);
+
+  const summary = document.getElementById('invoice-summary');
+  if (data.length > 0) {
+    summary.innerHTML = `
+      <div class="invoice-total">
+        <span class="invoice-total-label">Total ready to invoice</span>
+        <span class="invoice-total-amt">${fmt(total)}</span>
+        <span class="invoice-total-count">${data.length} entr${data.length === 1 ? 'y' : 'ies'}</span>
+      </div>`;
+  } else {
+    summary.innerHTML = '';
+  }
+
+  const tbody = document.getElementById('invoice-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">No entries marked ready to invoice.</td></tr>`;
+    return;
+  }
+
+  const sorted = [...data].sort((a, b) => a.date < b.date ? 1 : -1);
+  tbody.innerHTML = sorted.map(e => {
+    const h = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span>` : '';
+    const d = e.description    ? `<span>${esc(e.description)}</span>` : '';
+    return `<tr>
+      <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
+      <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
+      <td>${h}${d}</td>
+      <td class="amount-actual" style="white-space:nowrap">${fmt(+e.amount)}</td>
+      <td class="note-text">${esc(e.notes || '')}</td>
+      <td><button class="btn-unmark" data-id="${e.id}">Unmark</button></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.btn-unmark').forEach(b =>
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      await update(b.dataset.id, { ready_to_invoice: false });
+      const row = rows.find(r => String(r.id) === b.dataset.id);
+      if (row) row.ready_to_invoice = false;
+      renderInvoice();
+    })
+  );
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────────
