@@ -86,7 +86,15 @@
       setText(`cat-${cat}-planned`, cp > 0 ? '+ ' + fmt(cp) + ' planned' : '');
       const pct = (ca + cp) > 0 ? Math.round(ca / (ca + cp) * 100) : 0;
       setStyle(`cat-${cat}-bar`, 'width', pct + '%');                                                                                                                                                       
-    }
+
+    // BTS tally
+    const bts = rows.filter(r =>
+      (r.description || '').toLowerCase().includes('bts') ||
+      (r.creator_handle || '').toLowerCase().includes('bts')
+    );
+    const btsAct = bts.filter(r => r.entry_type === 'actual');
+    setText('bts-count', bts.length + ' entries');
+    setText('bts-amt',   btsAct.length > 0 ? '· ' + fmt(sum(btsAct)) + ' actual' : '');    }
   }                                                                                                                                                                                                         
                                                             
   // ── Table view ────────────────────────────────────────────────────────────────                                                                                                                         
