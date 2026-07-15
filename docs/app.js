@@ -105,6 +105,15 @@ function renderSummary() {
   const btsAct = bts.filter(r => r.entry_type === 'actual');
   setText('bts-count', bts.length + ' entries');
   setText('bts-amt', btsAct.length > 0 ? '· ' + fmt(sum(btsAct)) + ' actual' : '');
+
+  // Pumpkin Spice tally
+  const ps = rows.filter(r =>
+    (r.description || '').toLowerCase().includes('pumpkin spice') ||
+    (r.creator_handle || '').toLowerCase().includes('pumpkin spice')
+  );
+  const psAct = ps.filter(r => r.entry_type === 'actual');
+  setText('ps-count', ps.length + ' entries');
+  setText('ps-amt', psAct.length > 0 ? '· ' + fmt(sum(psAct)) + ' actual' : '');
 }
 
 // ── Table view ────────────────────────────────────────────────────────────────
