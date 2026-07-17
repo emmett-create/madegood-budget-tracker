@@ -114,6 +114,15 @@ function renderSummary() {
   const psAct = ps.filter(r => r.entry_type === 'actual');
   setText('ps-count', ps.length + ' entries');
   setText('ps-amt', psAct.length > 0 ? '· ' + fmt(sum(psAct)) + ' actual' : '');
+
+  // Whitelisting tally
+  const wl = rows.filter(r =>
+    (r.description || '').toLowerCase().includes('whitelisting') ||
+    (r.creator_handle || '').toLowerCase().includes('whitelisting')
+  );
+  const wlAct = wl.filter(r => r.entry_type === 'actual');
+  setText('wl-count', wl.length + ' entries');
+  setText('wl-amt', wlAct.length > 0 ? '· ' + fmt(sum(wlAct)) + ' actual' : '');
 }
 
 // ── Table view ────────────────────────────────────────────────────────────────
