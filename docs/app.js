@@ -6,6 +6,16 @@ const CATS = {
   madegood_paid: 'MadeGood Paid Influencers',
   shipping:      'Shipping & PR Mailers',
 };
+const PAID_CATS = ['a8_paid', 'madegood_paid'];   // only these go through Lumanu
+
+const LUMANU_STATUSES = {
+  not_sent:       'Not Sent',
+  needs_approval: 'Needs Approval',
+  approved:       'Approved',
+  pending:        'Pending',
+  issued:         'Issued',
+  canceled:       'Canceled',
+};
 
 const API = `${SUPABASE_URL}/rest/v1/madegood_budget_entries`;
 const SB  = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
@@ -22,7 +32,8 @@ let calM        = new Date().getMonth();
 let deleteId    = null;
 let editId      = null;
 let convertId   = null;
-let pending     = [];   // DocuSign inbox items awaiting review (status = 'pending')
+let pending     = [];   // DocuSign / invoice inbox items awaiting review (status = 'pending')
+let selected    = new Set();   // ids checked off for Lumanu CSV export
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -86,11 +97,16 @@ function renderInbox() {
     const who  = e.creator_handle ? '@' + esc(e.creator_handle.replace(/^@/, ''))
                                   : (e.description ? esc(e.description) : 'Contract');
     const raw  = (e.notes || '').trim();
+    const isInvoice = e.source === 'invoice_email';
     const link = /^https?:\/\//.test(raw)
-      ? `<a href="${esc(raw)}" target="_blank" style="color:#d29922">View contract</a>`
+      ? `<a href="${esc(raw)}" target="_blank" style="color:#d29922">${isInvoice ? 'View invoice' : 'View contract'}</a>`
       : esc(raw);
+    const kind = isInvoice
+      ? '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#d29922;background:#2d2107;border-radius:4px;padding:2px 6px">Invoice</span>'
+      : '';
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #2a2a2a">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        ${kind}
         <span style="font-weight:600">${who}</span>
         <span style="color:#8b949e;font-size:12px">${fmtDate(e.date)}</span>
         ${link ? `<span style="font-size:12px">${link}</span>` : ''}
@@ -207,7 +223,7 @@ function renderTable() {
   const tbody = document.getElementById('entries-tbody');
 
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">No entries match your filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-cell">No entries match your filters.</td></tr>`;
     return;
   }
 
@@ -229,12 +245,21 @@ function renderTable() {
       }
     }
     const invoiced = !!e.ready_to_invoice;
+    const isPaid = PAID_CATS.includes(e.category);
+    const lumanuCell = isPaid
+      ? `<span class="badge-lumanu ${e.lumanu_status || 'not_sent'}">${LUMANU_STATUSES[e.lumanu_status] || 'Not Sent'}</span>`
+      : '<span style="color:#444">—</span>';
+    const checkCell = isPaid
+      ? `<input type="checkbox" class="row-check" data-id="${e.id}" ${selected.has(String(e.id)) ? 'checked' : ''}>`
+      : '';
     return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
+      <td>${checkCell}</td>
       <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
       <td><span class="badge-type ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
       <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
       <td>${h}${d}</td>
       <td class="amount-${e.entry_type}" style="white-space:nowrap">${fmt(+e.amount)}${varianceHtml}</td>
+      <td>${lumanuCell}</td>
       <td class="note-text">${esc(e.notes || '')}</td>
       <td><button class="btn-invoice${invoiced ? ' invoiced' : ''}" data-id="${e.id}" data-state="${invoiced}">${invoiced ? '✓ Ready' : 'Mark ready'}</button></td>
       <td style="white-space:nowrap">${convertBtn}<button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
@@ -266,6 +291,58 @@ function renderTable() {
       b.disabled = false;
     })
   );
+  tbody.querySelectorAll('.row-check').forEach(cb =>
+    cb.addEventListener('change', () => {
+      if (cb.checked) selected.add(cb.dataset.id); else selected.delete(cb.dataset.id);
+      updateExportBar();
+    })
+  );
+}
+
+// ── Lumanu CSV export ────────────────────────────────────────────────────────
+function updateExportBar() {
+  const bar = document.getElementById('lumanu-export-bar');
+  if (!bar) return;
+  bar.classList.toggle('hidden', selected.size === 0);
+  setText('lumanu-export-count', `${selected.size} selected`);
+}
+
+function csvCell(v) {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportLumanuCSV() {
+  const chosen = rows.filter(r => selected.has(String(r.id)));
+  if (!chosen.length) return;
+
+  const header = ['Lumanu ID', 'Email', 'Description', 'Public notes', 'Due date', 'PO #', 'Amount (dollars)'];
+  const lines  = [header.join(',')];
+  chosen.forEach(e => {
+    const bid      = (e.billing_id || '').trim();
+    const isEmail  = bid.includes('@');
+    const desc     = e.description || (e.creator_handle ? `@${e.creator_handle.replace(/^@/, '')}` : '');
+    const row = [
+      isEmail ? '' : bid,
+      isEmail ? bid : '',
+      desc,
+      e.notes || '',
+      e.due_date || '',
+      e.po_number || '',
+      (+e.amount).toFixed(2),
+    ];
+    lines.push(row.map(csvCell).join(','));
+  });
+
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `lumanu-upload-${todayStr()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────────────
@@ -371,7 +448,7 @@ function bindAll() {
     const isEdit = !!editId;
     btn.disabled = true; btn.textContent = 'Saving…';
     const cat  = document.getElementById('f-category').value;
-    const paid = ['a8_paid','madegood_paid'].includes(cat);
+    const paid = PAID_CATS.includes(cat);
     const payload = {
       date:           document.getElementById('f-date').value,
       entry_type:     document.getElementById('f-type').value,
@@ -380,6 +457,10 @@ function bindAll() {
       description:    document.getElementById('f-description').value.trim() || null,
       amount:         parseFloat(document.getElementById('f-amount').value),
       notes:          document.getElementById('f-notes').value.trim() || null,
+      billing_id:     paid ? (document.getElementById('f-billing-id').value.trim() || null) : null,
+      due_date:       paid ? (document.getElementById('f-due-date').value || null) : null,
+      po_number:      paid ? (document.getElementById('f-po').value.trim() || null) : null,
+      lumanu_status:  paid ? document.getElementById('f-lumanu-status').value : 'not_sent',
       status:         'confirmed',   // saving always confirms (incl. completing an inbox item)
     };
     const ok = isEdit ? await update(editId, payload) : await insert(payload);
@@ -389,10 +470,27 @@ function bindAll() {
     await load();
   });
 
-  // Show/hide handle field based on category
+  // Show/hide handle + Lumanu fields based on category
   document.getElementById('f-category').addEventListener('change', e => {
-    const show = ['a8_paid','madegood_paid'].includes(e.target.value);
+    const show = PAID_CATS.includes(e.target.value);
     document.getElementById('field-handle').classList.toggle('hidden', !show);
+    document.getElementById('field-lumanu').classList.toggle('hidden', !show);
+  });
+
+  // Lumanu CSV export
+  document.getElementById('btn-export-lumanu').addEventListener('click', async () => {
+    const chosenIds = [...selected];
+    exportLumanuCSV();
+    if (chosenIds.length && confirm(`Mark ${chosenIds.length} entr${chosenIds.length === 1 ? 'y' : 'ies'} as "Needs Approval" in Lumanu?`)) {
+      for (const id of chosenIds) await update(id, { lumanu_status: 'needs_approval' });
+      selected.clear();
+      await load();
+    }
+  });
+  document.getElementById('btn-clear-selection').addEventListener('click', () => {
+    selected.clear();
+    updateExportBar();
+    renderTable();
   });
 
   // Delete
@@ -586,7 +684,9 @@ function openModal() {
   document.getElementById('btn-submit').textContent  = 'Add Entry';
   document.getElementById('entry-form').reset();
   document.getElementById('f-date').value = todayStr();
+  document.getElementById('f-lumanu-status').value = 'not_sent';
   document.getElementById('field-handle').classList.remove('hidden');
+  document.getElementById('field-lumanu').classList.remove('hidden');
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 function openEditModal(entry) {
@@ -596,13 +696,18 @@ function openEditModal(entry) {
   document.getElementById('entry-form').reset();
   document.getElementById('f-date').value        = entry.date;
   document.getElementById('f-type').value        = entry.entry_type;
-  document.getElementById('f-category').value    = entry.category;
+  document.getElementById('f-category').value    = entry.category || '';
   document.getElementById('f-handle').value      = entry.creator_handle || '';
   document.getElementById('f-description').value = entry.description || '';
   document.getElementById('f-amount').value      = entry.amount;
   document.getElementById('f-notes').value       = entry.notes || '';
-  const showHandle = ['a8_paid','madegood_paid'].includes(entry.category);
+  document.getElementById('f-billing-id').value  = entry.billing_id || '';
+  document.getElementById('f-due-date').value    = entry.due_date || '';
+  document.getElementById('f-po').value          = entry.po_number || '';
+  document.getElementById('f-lumanu-status').value = entry.lumanu_status || 'not_sent';
+  const showHandle = PAID_CATS.includes(entry.category);
   document.getElementById('field-handle').classList.toggle('hidden', !showHandle);
+  document.getElementById('field-lumanu').classList.toggle('hidden', !showHandle);
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 function quickConvert(id) {

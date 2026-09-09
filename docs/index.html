@@ -116,22 +116,32 @@
         </div>
         <input type="search" id="search-input" class="search-box" placeholder="Search creator, description…">
       </div>
+
+      <!-- Lumanu bulk export bar -->
+      <div class="lumanu-export-bar hidden" id="lumanu-export-bar">
+        <span id="lumanu-export-count">0 selected</span>
+        <button class="btn-sec" id="btn-clear-selection">Clear</button>
+        <button class="btn-pri" id="btn-export-lumanu">⬇ Export to Lumanu CSV</button>
+      </div>
+
       <div class="table-wrap">
         <table class="tbl">
           <thead>
             <tr>
+              <th></th>
               <th class="sh" data-col="date">Date</th>
               <th class="sh" data-col="entry_type">Type</th>
               <th class="sh" data-col="category">Category</th>
               <th>Creator / Description</th>
               <th class="sh" data-col="amount">Amount</th>
+              <th>Lumanu</th>
               <th>Notes</th>
               <th>Invoice</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="entries-tbody">
-            <tr><td colspan="8" class="empty-cell">Loading…</td></tr>
+            <tr><td colspan="10" class="empty-cell">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -238,6 +248,33 @@
         <div class="fld">
           <label>Notes <span style="font-weight:400;text-transform:none;font-size:10px">(optional)</span></label>
           <textarea id="f-notes" rows="2" placeholder="Any extra context…"></textarea>
+        </div>
+        <div id="field-lumanu">
+          <div class="fld">
+            <label>Lumanu Billing ID <span style="font-weight:400;text-transform:none;font-size:10px">(Lumanu ID or billing email)</span></label>
+            <input type="text" id="f-billing-id" placeholder="LU5231USHA or creator@email.com">
+          </div>
+          <div class="form-row">
+            <div class="fld">
+              <label>Due Date</label>
+              <input type="date" id="f-due-date">
+            </div>
+            <div class="fld">
+              <label>PO # <span style="font-weight:400;text-transform:none;font-size:10px">(optional)</span></label>
+              <input type="text" id="f-po" placeholder="14512">
+            </div>
+          </div>
+          <div class="fld">
+            <label>Lumanu Status</label>
+            <select id="f-lumanu-status">
+              <option value="not_sent">Not Sent</option>
+              <option value="needs_approval">Needs Approval</option>
+              <option value="approved">Approved</option>
+              <option value="pending">Pending</option>
+              <option value="issued">Issued</option>
+              <option value="canceled">Canceled</option>
+            </select>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-sec" id="btn-cancel">Cancel</button>
