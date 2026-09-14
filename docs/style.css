@@ -161,7 +161,7 @@ body {
 /* ── Table ── */
 .table-wrap {
   background: #161b22; border: 1px solid #30363d;
-  border-radius: 8px; overflow: hidden;
+  border-radius: 8px; overflow-x: auto;
 }
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl th {
