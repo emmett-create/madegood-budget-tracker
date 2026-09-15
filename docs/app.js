@@ -246,10 +246,11 @@ function renderTable() {
     }
     const invoiced = !!e.ready_to_invoice;
     const isPaid = PAID_CATS.includes(e.category);
+    const isSendable = e.source === 'invoice_email' && !e.lumanu_payable_id; // only invoice-sourced, not already sent
     const lumanuCell = isPaid
       ? `<span class="badge-lumanu ${e.lumanu_status || 'not_sent'}">${LUMANU_STATUSES[e.lumanu_status] || 'Not Sent'}</span>`
       : '<span style="color:#444">—</span>';
-    const checkCell = isPaid
+    const checkCell = isSendable
       ? `<input type="checkbox" class="row-check" data-id="${e.id}" ${selected.has(String(e.id)) ? 'checked' : ''}>`
       : '';
     return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
@@ -299,7 +300,9 @@ function renderTable() {
   );
 }
 
-// ── Lumanu CSV export ────────────────────────────────────────────────────────
+// ── Lumanu send (direct API, via the budget-tracker-lumanu-bridge service) ────
+const BRIDGE_API = 'https://budget-tracker-lumanu-bridge.onrender.com'; // TODO: confirm real URL once deployed
+
 function updateExportBar() {
   const bar = document.getElementById('lumanu-export-bar');
   if (!bar) return;
@@ -307,42 +310,41 @@ function updateExportBar() {
   setText('lumanu-export-count', `${selected.size} selected`);
 }
 
-function csvCell(v) {
-  const s = String(v ?? '');
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+async function sendSelectedToLumanu() {
+  const chosenIds = [...selected];
+  if (!chosenIds.length) return;
 
-function exportLumanuCSV() {
-  const chosen = rows.filter(r => selected.has(String(r.id)));
-  if (!chosen.length) return;
+  const missingBilling = rows.filter(r => chosenIds.includes(String(r.id)) && !(r.billing_id || '').trim());
+  if (missingBilling.length) {
+    alert(`${missingBilling.length} selected entr${missingBilling.length === 1 ? 'y is' : 'ies are'} missing a Billing ID — fill that in first (edit the entry) before sending.`);
+    return;
+  }
 
-  const header = ['Lumanu ID', 'Email', 'Description', 'Public notes', 'Due date', 'PO #', 'Amount (dollars)'];
-  const lines  = [header.join(',')];
-  chosen.forEach(e => {
-    const bid      = (e.billing_id || '').trim();
-    const isEmail  = bid.includes('@');
-    const desc     = e.description || (e.creator_handle ? `@${e.creator_handle.replace(/^@/, '')}` : '');
-    const row = [
-      isEmail ? '' : bid,
-      isEmail ? bid : '',
-      desc,
-      e.notes || '',
-      e.due_date || '',
-      e.po_number || '',
-      (+e.amount).toFixed(2),
-    ];
-    lines.push(row.map(csvCell).join(','));
-  });
+  const pw = prompt('Enter the password to send to Lumanu:');
+  if (!pw) return;
 
-  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `lumanu-upload-${todayStr()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  const btn = document.getElementById('btn-export-lumanu');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(`${BRIDGE_API}/api/lumanu/send/madegood`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Bridge-Secret': pw },
+      body: JSON.stringify({ entry_ids: chosenIds }),
+    });
+    if (r.status === 401) { alert('Wrong password.'); return; }
+    const { results } = await r.json();
+    const okCount = results.filter(x => x.ok).length;
+    const failed  = results.filter(x => !x.ok);
+    let msg = `${okCount} of ${results.length} sent to Lumanu successfully.`;
+    if (failed.length) msg += `\n\nFailed:\n` + failed.map(f => `• ${f.error}`).join('\n');
+    alert(msg);
+    selected.clear();
+    await load();
+  } catch (e) {
+    alert('Error sending to Lumanu — please try again. ' + (e.message || ''));
+  } finally {
+    btn.disabled = false; btn.textContent = '⬇ Send to Lumanu';
+  }
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────────────
@@ -477,16 +479,8 @@ function bindAll() {
     document.getElementById('field-lumanu').classList.toggle('hidden', !show);
   });
 
-  // Lumanu CSV export
-  document.getElementById('btn-export-lumanu').addEventListener('click', async () => {
-    const chosenIds = [...selected];
-    exportLumanuCSV();
-    if (chosenIds.length && confirm(`Mark ${chosenIds.length} entr${chosenIds.length === 1 ? 'y' : 'ies'} as "Needs Approval" in Lumanu?`)) {
-      for (const id of chosenIds) await update(id, { lumanu_status: 'needs_approval' });
-      selected.clear();
-      await load();
-    }
-  });
+  // Send to Lumanu (direct API)
+  document.getElementById('btn-export-lumanu').addEventListener('click', sendSelectedToLumanu);
   document.getElementById('btn-clear-selection').addEventListener('click', () => {
     selected.clear();
     updateExportBar();

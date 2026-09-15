@@ -41,3 +41,13 @@ ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS po_number text;
 ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS lumanu_status text NOT NULL DEFAULT 'not_sent'
   CHECK (lumanu_status IN ('not_sent','needs_approval','approved','pending','issued','canceled'));
 ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'manual';
+
+-- ── Direct Lumanu API send (2026-09-15) ─────────────────────────────────────
+-- Replaces the CSV export for invoice-sourced entries: a standalone backend
+-- (budget-tracker-lumanu-bridge, separate repo/service) creates the payable
+-- via Lumanu's API directly and stores the id it comes back with, both to
+-- stop double-sends and so Lumanu's status webhook can find the right row
+-- to update later. Only source='invoice_email' entries are ever eligible —
+-- manually-entered historical rows never go through this, to avoid
+-- accidentally re-paying something that was already handled another way.
+ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS lumanu_payable_id text;
