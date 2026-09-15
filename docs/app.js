@@ -246,13 +246,16 @@ function renderTable() {
     }
     const invoiced = !!e.ready_to_invoice;
     const isPaid = PAID_CATS.includes(e.category);
-    const isSendable = e.source === 'invoice_email' && !e.lumanu_payable_id; // only invoice-sourced, not already sent
+    const isSendable = (e.source === 'invoice_email' || e.invoice_path) && !e.lumanu_payable_id;
     const lumanuCell = isPaid
       ? `<span class="badge-lumanu ${e.lumanu_status || 'not_sent'}">${LUMANU_STATUSES[e.lumanu_status] || 'Not Sent'}</span>`
       : '<span style="color:#444">—</span>';
     const checkCell = isSendable
       ? `<input type="checkbox" class="row-check" data-id="${e.id}" ${selected.has(String(e.id)) ? 'checked' : ''}>`
       : '';
+    const invoiceBtn = e.invoice_path
+      ? `<button class="btn-view-invoice" data-id="${e.id}" title="View attached invoice">📄</button>`
+      : `<button class="btn-attach-invoice" data-id="${e.id}" title="Attach invoice PDF">📎</button>`;
     return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
       <td>${checkCell}</td>
       <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
@@ -263,7 +266,7 @@ function renderTable() {
       <td>${lumanuCell}</td>
       <td class="note-text">${esc(e.notes || '')}</td>
       <td><button class="btn-invoice${invoiced ? ' invoiced' : ''}" data-id="${e.id}" data-state="${invoiced}">${invoiced ? '✓ Ready' : 'Mark ready'}</button></td>
-      <td style="white-space:nowrap">${convertBtn}<button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
+      <td style="white-space:nowrap">${convertBtn}${invoiceBtn} <button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
     </tr>`;
   }).join('');
 
@@ -297,6 +300,12 @@ function renderTable() {
       if (cb.checked) selected.add(cb.dataset.id); else selected.delete(cb.dataset.id);
       updateExportBar();
     })
+  );
+  tbody.querySelectorAll('.btn-attach-invoice').forEach(b =>
+    b.addEventListener('click', () => attachInvoice(b.dataset.id))
+  );
+  tbody.querySelectorAll('.btn-view-invoice').forEach(b =>
+    b.addEventListener('click', () => viewInvoice(b.dataset.id))
   );
 }
 
@@ -344,6 +353,53 @@ async function sendSelectedToLumanu() {
     alert('Error sending to Lumanu — please try again. ' + (e.message || ''));
   } finally {
     btn.disabled = false; btn.textContent = '⬇ Send to Lumanu';
+  }
+}
+
+// ── Retroactive invoice attachment ──────────────────────────────────────────
+function attachInvoice(entryId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/pdf';
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') { alert('Please choose a PDF file.'); return; }
+
+    const pw = prompt('Enter the password to attach this invoice:');
+    if (!pw) return;
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const r = await fetch(`${BRIDGE_API}/api/invoice/upload/madegood?entry_id=${entryId}`, {
+        method: 'POST',
+        headers: { 'X-Bridge-Secret': pw },
+        body: form,
+      });
+      if (r.status === 401) { alert('Wrong password.'); return; }
+      if (!r.ok) { alert('Upload failed — please try again.'); return; }
+      await load();
+    } catch (e) {
+      alert('Error uploading invoice — please try again. ' + (e.message || ''));
+    }
+  });
+  input.click();
+}
+
+async function viewInvoice(entryId) {
+  const pw = prompt('Enter the password to view this invoice:');
+  if (!pw) return;
+  try {
+    const r = await fetch(`${BRIDGE_API}/api/invoice/url/madegood/${entryId}`, {
+      headers: { 'X-Bridge-Secret': pw },
+    });
+    if (r.status === 401) { alert('Wrong password.'); return; }
+    if (!r.ok) { alert('Could not load invoice.'); return; }
+    const { url } = await r.json();
+    window.open(url, '_blank');
+  } catch (e) {
+    alert('Error loading invoice. ' + (e.message || ''));
   }
 }
 

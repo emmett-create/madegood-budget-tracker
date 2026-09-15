@@ -51,3 +51,11 @@ ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS source text NOT NUL
 -- manually-entered historical rows never go through this, to avoid
 -- accidentally re-paying something that was already handled another way.
 ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS lumanu_payable_id text;
+
+-- ── Retroactive invoice attachment (2026-09-15) ─────────────────────────────
+-- Lets someone attach a real invoice PDF to an old, manually-entered row
+-- (uploaded to a private Supabase Storage bucket via the bridge backend,
+-- never a public URL) so that row becomes eligible to send to Lumanu too —
+-- same safety logic as source='invoice_email', just triggered by hand
+-- instead of the Zap.
+ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS invoice_path text;
