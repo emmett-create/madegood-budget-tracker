@@ -83,7 +83,10 @@ async function update(id, data) {
 function render() {
   renderSummary();
   renderInbox();
-  view === 'calendar' ? renderCal() : renderTable();
+  if (view === 'calendar')     renderCal();
+  else if (view === 'invoice') renderInvoice();
+  else if (view === 'sent')    renderSent();
+  else                         renderTable();
 }
 
 function renderInbox() {
@@ -652,6 +655,7 @@ function bindAll() {
   document.getElementById('vt-table').addEventListener('click',    () => switchView('table'));
   document.getElementById('vt-calendar').addEventListener('click', () => switchView('calendar'));
   document.getElementById('vt-invoice').addEventListener('click',  () => switchView('invoice'));
+  document.getElementById('vt-sent').addEventListener('click',     () => switchView('sent'));
 
   // Calendar nav
   document.getElementById('cal-prev').addEventListener('click', () => {
@@ -672,11 +676,14 @@ function switchView(v) {
   document.getElementById('vt-table').classList.toggle('active',    v === 'table');
   document.getElementById('vt-calendar').classList.toggle('active', v === 'calendar');
   document.getElementById('vt-invoice').classList.toggle('active',  v === 'invoice');
+  document.getElementById('vt-sent').classList.toggle('active',     v === 'sent');
   document.getElementById('view-table').classList.toggle('hidden',    v !== 'table');
   document.getElementById('view-calendar').classList.toggle('hidden', v !== 'calendar');
   document.getElementById('view-invoice').classList.toggle('hidden',  v !== 'invoice');
+  document.getElementById('view-sent').classList.toggle('hidden',     v !== 'sent');
   if (v === 'calendar') renderCal();
   else if (v === 'invoice') renderInvoice();
+  else if (v === 'sent') renderSent();
   else renderTable();
 }
 
@@ -725,6 +732,49 @@ function renderInvoice() {
       renderInvoice();
     })
   );
+}
+
+function renderSent() {
+  const data = rows.filter(r => r.lumanu_payable_id);
+  const total = sum(data);
+
+  const summary = document.getElementById('sent-summary');
+  if (data.length > 0) {
+    const counts = {};
+    data.forEach(e => { counts[e.lumanu_status] = (counts[e.lumanu_status] || 0) + 1; });
+    const breakdown = Object.entries(counts)
+      .map(([status, n]) => `<span class="badge-lumanu ${status}">${n} ${LUMANU_STATUSES[status] || status}</span>`)
+      .join(' ');
+    summary.innerHTML = `
+      <div class="invoice-total">
+        <span class="invoice-total-label">Total sent to Lumanu</span>
+        <span class="invoice-total-amt">${fmt(total)}</span>
+        <span class="invoice-total-count">${data.length} entr${data.length === 1 ? 'y' : 'ies'}</span>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${breakdown}</div>`;
+  } else {
+    summary.innerHTML = '';
+  }
+
+  const tbody = document.getElementById('sent-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">No invoices sent to Lumanu yet.</td></tr>`;
+    return;
+  }
+
+  const sorted = [...data].sort((a, b) => a.date < b.date ? 1 : -1);
+  tbody.innerHTML = sorted.map(e => {
+    const h = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span>` : '';
+    const d = e.description    ? `<span>${esc(e.description)}</span>` : '';
+    return `<tr>
+      <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
+      <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
+      <td>${h}${d}</td>
+      <td class="amount-actual" style="white-space:nowrap">${fmt(+e.amount)}</td>
+      <td>${esc(e.billing_id || '')}</td>
+      <td><span class="badge-lumanu ${e.lumanu_status || 'not_sent'}">${LUMANU_STATUSES[e.lumanu_status] || 'Not Sent'}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────────
