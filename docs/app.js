@@ -301,7 +301,7 @@ function renderTable() {
 }
 
 // ── Lumanu send (direct API, via the budget-tracker-lumanu-bridge service) ────
-const BRIDGE_API = 'https://budget-tracker-lumanu-bridge.onrender.com'; // TODO: confirm real URL once deployed
+const BRIDGE_API = 'https://budget-tracker-lumanu-bridge.onrender.com';
 
 function updateExportBar() {
   const bar = document.getElementById('lumanu-export-bar');
