@@ -226,7 +226,7 @@ function renderTable() {
   const tbody = document.getElementById('entries-tbody');
 
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty-cell">No entries match your filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="empty-cell">No entries match your filters.</td></tr>`;
     return;
   }
 
@@ -257,8 +257,11 @@ function renderTable() {
       ? `<input type="checkbox" class="row-check" data-id="${e.id}" ${selected.has(String(e.id)) ? 'checked' : ''}>`
       : '';
     const invoiceBtn = e.invoice_path
-      ? `<button class="btn-view-invoice" data-id="${e.id}" title="View attached invoice">📄</button>`
-      : `<button class="btn-attach-invoice" data-id="${e.id}" title="Attach invoice PDF">📎</button>`;
+      ? `<button class="btn-view-invoice" data-id="${e.id}" title="View attached invoice">📄 View</button>`
+      : `<button class="btn-attach-invoice" data-id="${e.id}" title="Attach invoice PDF">📎 Add</button>`;
+    const contractBtn = e.contract_link
+      ? `<a href="${esc(e.contract_link)}" target="_blank" class="btn-view-contract" title="View contract">📄 View ↗</a>`
+      : `<button class="btn-add-contract" data-id="${e.id}" title="Add a link to the signed contract">+ Add Link</button>`;
     return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
       <td>${checkCell}</td>
       <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
@@ -269,7 +272,9 @@ function renderTable() {
       <td>${lumanuCell}</td>
       <td class="note-text">${esc(e.notes || '')}</td>
       <td><button class="btn-invoice${invoiced ? ' invoiced' : ''}" data-id="${e.id}" data-state="${invoiced}">${invoiced ? '✓ Ready' : 'Mark ready'}</button></td>
-      <td style="white-space:nowrap">${convertBtn}${invoiceBtn} <button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
+      <td style="white-space:nowrap">${invoiceBtn}</td>
+      <td style="white-space:nowrap">${contractBtn}</td>
+      <td style="white-space:nowrap">${convertBtn}<button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
     </tr>`;
   }).join('');
 
@@ -310,6 +315,21 @@ function renderTable() {
   tbody.querySelectorAll('.btn-view-invoice').forEach(b =>
     b.addEventListener('click', () => viewInvoice(b.dataset.id))
   );
+  tbody.querySelectorAll('.btn-add-contract').forEach(b =>
+    b.addEventListener('click', () => addContractLink(b.dataset.id))
+  );
+}
+
+// ── Contract link (compliance ask: every line item traceable to its signed
+// contract, same reasoning as the invoice link — see conversation 2026-09-21) ──
+async function addContractLink(entryId) {
+  const url = prompt('Paste the link to the signed contract (DocuSign or any URL):');
+  if (!url) return;
+  const ok = await update(entryId, { contract_link: url });
+  if (!ok) { alert('Couldn\'t save the contract link — please try again.'); return; }
+  const row = rows.find(r => String(r.id) === entryId);
+  if (row) row.contract_link = url;
+  render();
 }
 
 // ── Lumanu send (direct API, via the budget-tracker-lumanu-bridge service) ────

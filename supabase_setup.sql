@@ -59,3 +59,12 @@ ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS lumanu_payable_id t
 -- same safety logic as source='invoice_email', just triggered by hand
 -- instead of the Zap.
 ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS invoice_path text;
+
+-- ── Contract link (2026-09-21) ──────────────────────────────────────────────
+-- Compliance ask from the calls: every line item should trace back to its
+-- signed contract, same reasoning as the invoice link, so this isn't a
+-- "source of truth" spread across disconnected systems. Just a plain link
+-- field (DocuSign or any URL) — no auto-fill source was ever decided, so
+-- it's filled in by hand via the "+ Add Link" button per row, same pattern
+-- already used for contract_link on paid_plan in the Paid System.
+ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS contract_link text;

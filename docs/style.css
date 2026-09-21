@@ -219,12 +219,13 @@ body {
 }
 .btn-edit:hover { color: #58a6ff; background: #0d1f3c; }
 
-.btn-attach-invoice, .btn-view-invoice {
+.btn-attach-invoice, .btn-view-invoice, .btn-add-contract, .btn-view-contract {
   background: none; border: none; color: #444;
   cursor: pointer; font-size: 13px; padding: 4px 6px; border-radius: 4px;
+  text-decoration: none; display: inline-block;
 }
-.btn-attach-invoice:hover { color: #d29922; background: #2d2107; }
-.btn-view-invoice:hover   { color: #3fb950; background: #0d2d1a; }
+.btn-attach-invoice:hover, .btn-add-contract:hover { color: #d29922; background: #2d2107; }
+.btn-view-invoice:hover, .btn-view-contract:hover { color: #3fb950; background: #0d2d1a; }
 
 .btn-convert {
   background: none; border: 1px solid #1a4429;
