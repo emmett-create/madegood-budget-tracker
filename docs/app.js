@@ -94,6 +94,20 @@ function renderInbox() {
   if (!pending.length) { sec.classList.add('hidden'); return; }
   sec.classList.remove('hidden');
   setText('inbox-count', `(${pending.length})`);
+
+  // Describe what's actually pending, rather than a static blurb that always
+  // mentioned DocuSign even when everything waiting was an invoice (Emmett
+  // caught this 2026-09-22 — the generic wording still read as wrong/confusing
+  // when the one pending item was clearly tagged "Invoice" right below it).
+  const invoiceCount  = pending.filter(e => e.source === 'invoice_email').length;
+  const docusignCount = pending.length - invoiceCount;
+  const whatsPending = invoiceCount && docusignCount
+    ? 'Executed DocuSign contracts and submitted invoices'
+    : invoiceCount
+      ? (invoiceCount === 1 ? 'A submitted invoice' : 'Submitted invoices')
+      : (docusignCount === 1 ? 'An executed DocuSign contract' : 'Executed DocuSign contracts');
+  setHTML('inbox-desc', `${whatsPending} waiting to be logged${invoiceCount && docusignCount ? ' (each row is tagged which)' : ''}. Click <strong>Assign + add</strong> to set the campaign &amp; amount and post it to the budget.`);
+
   list.innerHTML = pending.map(e => {
     const who  = e.creator_handle ? '@' + esc(e.creator_handle.replace(/^@/, ''))
                                   : (e.description ? esc(e.description) : 'Contract');
@@ -793,6 +807,10 @@ function fmtDateLong(s) {
 function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+function setHTML(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = val;
 }
 function setStyle(id, prop, val) {
   const el = document.getElementById(id);
