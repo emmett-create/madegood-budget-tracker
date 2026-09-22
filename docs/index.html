@@ -32,18 +32,13 @@
       </div>
       <div class="progress-track">
         <div class="progress-fill actual" id="progress-actual" style="width:0%"></div>
-        <div class="progress-fill planned" id="progress-planned" style="width:0%"></div>
-      </div>
-      <div class="legend">
-        <span class="legend-dot actual"></span> Actual &nbsp;&nbsp;
-        <span class="legend-dot planned"></span> Planned <span id="legend-planned-amt" style="color:#58a6ff;font-size:12px;font-weight:600"></span>
       </div>
     </div>
 
     <!-- DocuSign inbox (pending review) -->
     <div class="budget-card hidden" id="inbox-section" style="border:1px solid #d29922;background:#1c1607">
       <div style="font-weight:700;margin-bottom:2px">📥 Needs Review <span id="inbox-count" style="color:#d29922"></span></div>
-      <div style="color:#8b949e;font-size:12px;margin-bottom:6px">Executed DocuSign contracts waiting to be logged. Click <strong>Assign + add</strong> to set the campaign &amp; amount and post it to the budget.</div>
+      <div style="color:#8b949e;font-size:12px;margin-bottom:6px">Executed DocuSign contracts and submitted invoices waiting to be logged (each row is tagged which). Click <strong>Assign + add</strong> to set the campaign &amp; amount and post it to the budget.</div>
       <div id="inbox-list"></div>
     </div>
 
@@ -53,21 +48,18 @@
         <div class="cc-label">A8 Paid Influencers</div>
         <div class="cc-num"   id="cat-a8_paid-actual">$0</div>
         <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-a8_paid-bar" style="width:0%"></div></div>
-        <div class="cc-plan"  id="cat-a8_paid-planned"></div>
         <div class="cc-hint">Click to filter</div>
       </div>
       <div class="cat-card mg"   id="cc-madegood_paid"  data-cat="madegood_paid">
         <div class="cc-label">MadeGood Paid Influencers</div>
         <div class="cc-num"   id="cat-madegood_paid-actual">$0</div>
         <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-madegood_paid-bar" style="width:0%"></div></div>
-        <div class="cc-plan"  id="cat-madegood_paid-planned"></div>
         <div class="cc-hint">Click to filter</div>
       </div>
       <div class="cat-card ship" id="cc-shipping"       data-cat="shipping">
         <div class="cc-label">Shipping &amp; PR Mailers</div>
         <div class="cc-num"   id="cat-shipping-actual">$0</div>
         <div class="cc-bar-wrap"><div class="cc-bar-fill" id="cat-shipping-bar" style="width:0%"></div></div>
-        <div class="cc-plan"  id="cat-shipping-planned"></div>
         <div class="cc-hint">Click to filter</div>
       </div>
     </div>
@@ -110,11 +102,6 @@
     <!-- LIST VIEW -->
     <div id="view-table">
       <div class="toolbar">
-        <div class="type-tabs">
-          <button class="ttab active" data-filter="all">All</button>
-          <button class="ttab" data-filter="actual">Actuals</button>
-          <button class="ttab" data-filter="planned">Planned</button>
-        </div>
         <input type="search" id="search-input" class="search-box" placeholder="Search creator, description…">
       </div>
 
@@ -131,7 +118,6 @@
             <tr>
               <th></th>
               <th class="sh" data-col="date">Date</th>
-              <th class="sh" data-col="entry_type">Type</th>
               <th class="sh" data-col="category">Category</th>
               <th>Creator / Description</th>
               <th class="sh" data-col="amount">Amount</th>
@@ -144,7 +130,7 @@
             </tr>
           </thead>
           <tbody id="entries-tbody">
-            <tr><td colspan="12" class="empty-cell">Loading…</td></tr>
+            <tr><td colspan="11" class="empty-cell">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -161,7 +147,6 @@
         <span class="cal-dot a8_paid">A8 Paid Influencers</span>
         <span class="cal-dot madegood_paid">MadeGood Paid Influencers</span>
         <span class="cal-dot shipping">Shipping &amp; PR Mailers</span>
-        <span class="cal-key-dim">Dimmed = planned only</span>
       </div>
       <div class="cal-dow-row">
         <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div>
@@ -175,7 +160,7 @@
         </div>
         <table class="tbl">
           <thead>
-            <tr><th>Type</th><th>Category</th><th>Creator / Description</th><th>Amount</th><th>Notes</th></tr>
+            <tr><th>Category</th><th>Creator / Description</th><th>Amount</th><th>Notes</th></tr>
           </thead>
           <tbody id="cal-detail-tbody"></tbody>
         </table>
@@ -236,18 +221,9 @@
         <button class="modal-x" id="modal-close">✕</button>
       </div>
       <form id="entry-form">
-        <div class="form-row">
-          <div class="fld">
-            <label>Date</label>
-            <input type="date" id="f-date" required>
-          </div>
-          <div class="fld">
-            <label>Type</label>
-            <select id="f-type" required>
-              <option value="actual">Actual</option>
-              <option value="planned">Planned</option>
-            </select>
-          </div>
+        <div class="fld">
+          <label>Date</label>
+          <input type="date" id="f-date" required>
         </div>
         <div class="fld">
           <label>Category</label>
@@ -306,26 +282,6 @@
           <button type="submit" class="btn-pri" id="btn-submit">Add Entry</button>
         </div>
       </form>
-    </div>
-  </div>
-
-  <!-- Convert to Actual -->
-  <div class="overlay hidden" id="convert-overlay">
-    <div class="modal modal-sm">
-      <div class="modal-hdr">
-        <h3>Convert to Actual</h3>
-        <button class="modal-x" id="convert-close">✕</button>
-      </div>
-      <p style="color:#8b949e;font-size:13px;margin-bottom:16px">Planned: <strong id="convert-planned-amt" style="color:#58a6ff"></strong></p>
-      <div class="fld">
-        <label>Actual Amount ($)</label>
-        <input type="number" id="convert-amount" min="0" step="0.01" placeholder="0.00">
-        <div id="convert-diff" class="convert-diff"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-sec" id="convert-cancel">Cancel</button>
-        <button class="btn-pri" id="convert-confirm">Mark as Actual</button>
-      </div>
     </div>
   </div>
 

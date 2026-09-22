@@ -68,3 +68,14 @@ ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS invoice_path text;
 -- it's filled in by hand via the "+ Add Link" button per row, same pattern
 -- already used for contract_link on paid_plan in the Paid System.
 ALTER TABLE madegood_budget_entries ADD COLUMN IF NOT EXISTS contract_link text;
+
+-- ── "Planned" entry type removed from the UI (2026-09-22) ──────────────────
+-- Decided on the call: with everyone using the Paid Plan tab for actual
+-- planning/estimation now, a separate Planned/Actual distinction in the
+-- budget tracker itself was redundant. The frontend no longer lets anyone
+-- create or view a 'planned' entry (Type field, filter tabs, and the whole
+-- "Convert to Actual" flow are gone), and every new entry is written as
+-- entry_type='actual'. No schema change here on purpose — the column and its
+-- CHECK constraint are left as-is, so any pre-existing 'planned' rows keep
+-- displaying normally (their variance-vs-plan badge still shows if they have
+-- a planned_amount), nothing is deleted or migrated.

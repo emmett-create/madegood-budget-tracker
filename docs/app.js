@@ -21,7 +21,6 @@ const API = `${SUPABASE_URL}/rest/v1/madegood_budget_entries`;
 const SB  = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
 
 let rows        = [];
-let typeFilter  = 'all';
 let catFilter   = null;
 let search      = '';
 let sortCol     = 'date';
@@ -31,7 +30,6 @@ let calY        = new Date().getFullYear();
 let calM        = new Date().getMonth();
 let deleteId    = null;
 let editId      = null;
-let convertId   = null;
 let pending     = [];   // DocuSign / invoice inbox items awaiting review (status = 'pending')
 let selected    = new Set();   // ids checked off for Lumanu CSV export
 
@@ -132,28 +130,18 @@ function renderInbox() {
 }
 
 function renderSummary() {
-  const act  = rows.filter(r => r.entry_type === 'actual');
-  const plan = rows.filter(r => r.entry_type === 'planned');
-  const tAct  = sum(act);
-  const tPlan = sum(plan);
+  const tAct = sum(rows);
 
   setText('total-spent',     fmt(tAct));
   setText('total-remaining', fmt(TOTAL_BUDGET - tAct) + ' remaining');
 
-  const aPct = Math.min(tAct  / TOTAL_BUDGET * 100, 100);
-  const pPct = Math.min(tPlan / TOTAL_BUDGET * 100, 100 - aPct);
-  setStyle('progress-actual',  'width', aPct + '%');
-  setStyle('progress-planned', 'width', pPct + '%');
-  const ppEl = document.getElementById('progress-planned');
-  if (ppEl) ppEl.dataset.tooltip = tPlan > 0 ? fmt(tPlan) + ' planned' : '';
-  setText('legend-planned-amt', tPlan > 0 ? '(' + fmt(tPlan) + ')' : '');
+  const aPct = Math.min(tAct / TOTAL_BUDGET * 100, 100);
+  setStyle('progress-actual', 'width', aPct + '%');
 
   for (const cat of Object.keys(CATS)) {
-    const ca = sum(rows.filter(r => r.category === cat && r.entry_type === 'actual'));
-    const cp = sum(rows.filter(r => r.category === cat && r.entry_type === 'planned'));
-    setText(`cat-${cat}-actual`,  fmt(ca));
-    setText(`cat-${cat}-planned`, cp > 0 ? '+ ' + fmt(cp) + ' planned' : '');
-    const pct = (ca + cp) > 0 ? Math.round(ca / (ca + cp) * 100) : 0;
+    const ca = sum(rows.filter(r => r.category === cat));
+    setText(`cat-${cat}-actual`, fmt(ca));
+    const pct = ca > 0 ? 100 : 0;
     setStyle(`cat-${cat}-bar`, 'width', pct + '%');
   }
 
@@ -188,8 +176,7 @@ function renderSummary() {
 // ── Table view ────────────────────────────────────────────────────────────────
 function filtered() {
   let data = [...rows];
-  if (typeFilter !== 'all') data = data.filter(r => r.entry_type === typeFilter);
-  if (catFilter)            data = data.filter(r => r.category === catFilter);
+  if (catFilter) data = data.filter(r => r.category === catFilter);
   if (search) {
     const q = search.toLowerCase();
     data = data.filter(r =>
@@ -215,10 +202,9 @@ function renderTable() {
     const isSorted = col === sortCol;
     th.classList.toggle('sorted', isSorted);
     th.textContent = {
-      date:       'Date',
-      entry_type: 'Type',
-      category:   'Category',
-      amount:     'Amount',
+      date:     'Date',
+      category: 'Category',
+      amount:   'Amount',
     }[col] + (isSorted ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕');
   });
 
@@ -226,18 +212,17 @@ function renderTable() {
   const tbody = document.getElementById('entries-tbody');
 
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty-cell">No entries match your filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty-cell">No entries match your filters.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = data.map(e => {
     const h = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span>` : '';
     const d = e.description    ? `<span>${esc(e.description)}</span>` : '';
-    const convertBtn = e.entry_type === 'planned'
-      ? `<button class="btn-convert" data-id="${e.id}">→ Actual</button> `
-      : '';
+    // planned_amount is only ever set on historical rows from before Planned
+    // was removed as an entry type (2026-09-22) — still shown here if present.
     let varianceHtml = '';
-    if (e.entry_type === 'actual' && e.planned_amount != null) {
+    if (e.planned_amount != null) {
       const delta = +e.amount - +e.planned_amount;
       if (delta !== 0) {
         const cls = delta < 0 ? 'under' : 'over';
@@ -262,19 +247,18 @@ function renderTable() {
     const contractBtn = e.contract_link
       ? `<a href="${esc(e.contract_link)}" target="_blank" class="btn-view-contract" title="View contract">📄 View ↗</a>`
       : `<button class="btn-add-contract" data-id="${e.id}" title="Add a link to the signed contract">+ Add Link</button>`;
-    return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
+    return `<tr>
       <td>${checkCell}</td>
       <td style="white-space:nowrap;color:#8b949e">${fmtDate(e.date)}</td>
-      <td><span class="badge-type ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
       <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
       <td>${h}${d}</td>
-      <td class="amount-${e.entry_type}" style="white-space:nowrap">${fmt(+e.amount)}${varianceHtml}</td>
+      <td class="amount-actual" style="white-space:nowrap">${fmt(+e.amount)}${varianceHtml}</td>
       <td>${lumanuCell}</td>
       <td class="note-text">${esc(e.notes || '')}</td>
       <td><button class="btn-invoice${invoiced ? ' invoiced' : ''}" data-id="${e.id}" data-state="${invoiced}">${invoiced ? '✓ Ready' : 'Mark ready'}</button></td>
       <td style="white-space:nowrap">${invoiceBtn}</td>
       <td style="white-space:nowrap">${contractBtn}</td>
-      <td style="white-space:nowrap">${convertBtn}<button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
+      <td style="white-space:nowrap"><button class="btn-edit" data-id="${e.id}" title="Edit">✏</button> <button class="btn-del" data-id="${e.id}">✕</button></td>
     </tr>`;
   }).join('');
 
@@ -286,9 +270,6 @@ function renderTable() {
       const entry = rows.find(r => String(r.id) === b.dataset.id);
       if (entry) openEditModal(entry);
     })
-  );
-  tbody.querySelectorAll('.btn-convert').forEach(b =>
-    b.addEventListener('click', () => quickConvert(b.dataset.id))
   );
   tbody.querySelectorAll('.btn-invoice').forEach(b =>
     b.addEventListener('click', async () => {
@@ -457,14 +438,11 @@ function renderCal() {
       es.length       ? 'clickable' : '',
     ].filter(Boolean).join(' ');
 
-    // Show one pill per category that has entries, colored by category.
-    // Planned-only entries get a dimmer style; mixed actual+planned shows full color.
+    // One pill per category that has entries, colored by category.
     const catPills = Object.keys(CATS).map(cat => {
-      const catEs  = es.filter(e => e.category === cat);
+      const catEs = es.filter(e => e.category === cat);
       if (!catEs.length) return '';
-      const total   = sum(catEs);
-      const allPlan = catEs.every(e => e.entry_type === 'planned');
-      return `<div class="cal-dot ${cat}${allPlan ? ' cal-dot-plan' : ''}">${fmt(total)}</div>`;
+      return `<div class="cal-dot ${cat}">${fmt(sum(catEs))}</div>`;
     }).join('');
 
     html += `<div class="${cls}" data-date="${ds}">
@@ -492,7 +470,7 @@ function showCalDetail(ds, entries) {
     const h = e.creator_handle ? `<span class="handle-text">@${e.creator_handle.replace(/^@/, '')}</span>` : '';
     const d = e.description    ? `<span>${esc(e.description)}</span>` : '';
     let varianceHtml = '';
-    if (e.entry_type === 'actual' && e.planned_amount != null) {
+    if (e.planned_amount != null) {
       const delta = +e.amount - +e.planned_amount;
       if (delta !== 0) {
         const cls   = delta < 0 ? 'under' : 'over';
@@ -500,11 +478,10 @@ function showCalDetail(ds, entries) {
         varianceHtml = `<div class="row-variance ${cls}">${label}</div>`;
       }
     }
-    return `<tr class="${e.entry_type === 'planned' ? 'dim' : ''}">
-      <td><span class="badge-type ${e.entry_type}">${e.entry_type === 'actual' ? 'Actual' : 'Planned'}</span></td>
+    return `<tr>
       <td><span class="badge-cat ${e.category}">${CATS[e.category] || e.category}</span></td>
       <td>${h}${d}</td>
-      <td class="amount-${e.entry_type}">${fmt(+e.amount)}${varianceHtml}</td>
+      <td class="amount-actual">${fmt(+e.amount)}${varianceHtml}</td>
       <td class="note-text">${esc(e.notes || '')}</td>
     </tr>`;
   }).join('');
@@ -532,7 +509,7 @@ function bindAll() {
     const paid = PAID_CATS.includes(cat);
     const payload = {
       date:           document.getElementById('f-date').value,
-      entry_type:     document.getElementById('f-type').value,
+      entry_type:     'actual',   // Planned was removed as an entry type 2026-09-22
       category:       cat,
       creator_handle: paid ? (document.getElementById('f-handle').value.trim().replace(/^@/,'') || null) : null,
       description:    document.getElementById('f-description').value.trim() || null,
@@ -567,41 +544,6 @@ function bindAll() {
   });
 
   // Delete
-  // Convert to actual
-  document.getElementById('convert-close').addEventListener('click',  () => { convertId = null; document.getElementById('convert-overlay').classList.add('hidden'); });
-  document.getElementById('convert-cancel').addEventListener('click', () => { convertId = null; document.getElementById('convert-overlay').classList.add('hidden'); });
-  document.getElementById('convert-overlay').addEventListener('click', e => {
-    if (e.target.id === 'convert-overlay') { convertId = null; document.getElementById('convert-overlay').classList.add('hidden'); }
-  });
-  document.getElementById('convert-amount').addEventListener('input', () => {
-    const inp     = document.getElementById('convert-amount');
-    const planned = parseFloat(inp.dataset.planned) || 0;
-    const actual  = parseFloat(inp.value);
-    const diff    = document.getElementById('convert-diff');
-    if (isNaN(actual)) { diff.textContent = ''; return; }
-    const delta = actual - planned;
-    if (delta === 0) { diff.textContent = ''; return; }
-    diff.textContent = delta < 0
-      ? `${fmt(Math.abs(delta))} under plan`
-      : `${fmt(delta)} over plan`;
-    diff.className = delta < 0 ? 'convert-diff under' : 'convert-diff over';
-  });
-
-  document.getElementById('convert-confirm').addEventListener('click', async () => {
-    if (!convertId) return;
-    const inp     = document.getElementById('convert-amount');
-    const amount  = parseFloat(inp.value);
-    const planned = parseFloat(inp.dataset.planned);
-    if (isNaN(amount) || amount < 0) return;
-    const btn = document.getElementById('convert-confirm');
-    btn.disabled = true; btn.textContent = 'Saving…';
-    await update(convertId, { entry_type: 'actual', amount, planned_amount: planned });
-    btn.disabled = false; btn.textContent = 'Mark as Actual';
-    convertId = null;
-    document.getElementById('convert-overlay').classList.add('hidden');
-    await load();
-  });
-
   document.getElementById('delete-cancel').addEventListener('click', closeDelete);
   document.getElementById('delete-overlay').addEventListener('click', e => {
     if (e.target.id === 'delete-overlay') closeDelete();
@@ -639,16 +581,6 @@ function bindAll() {
     document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
     document.getElementById('filter-banner').classList.add('hidden');
     renderTable();
-  });
-
-  // Type filter tabs
-  document.querySelectorAll('.ttab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.ttab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      typeFilter = tab.dataset.filter;
-      renderTable();
-    });
   });
 
   // Search
@@ -815,7 +747,6 @@ function openEditModal(entry) {
   document.getElementById('btn-submit').textContent  = 'Save Changes';
   document.getElementById('entry-form').reset();
   document.getElementById('f-date').value        = entry.date;
-  document.getElementById('f-type').value        = entry.entry_type;
   document.getElementById('f-category').value    = entry.category || '';
   document.getElementById('f-handle').value      = entry.creator_handle || '';
   document.getElementById('f-description').value = entry.description || '';
@@ -829,19 +760,6 @@ function openEditModal(entry) {
   document.getElementById('field-handle').classList.toggle('hidden', !showHandle);
   document.getElementById('field-lumanu').classList.toggle('hidden', !showHandle);
   document.getElementById('modal-overlay').classList.remove('hidden');
-}
-function quickConvert(id) {
-  const entry = rows.find(r => String(r.id) === id);
-  if (!entry) return;
-  convertId = entry.id;
-  document.getElementById('convert-planned-amt').textContent = fmt(+entry.amount);
-  const inp = document.getElementById('convert-amount');
-  inp.value = entry.amount;
-  inp.dataset.planned = entry.amount;
-  document.getElementById('convert-diff').textContent = '';
-  document.getElementById('convert-overlay').classList.remove('hidden');
-  inp.focus();
-  inp.select();
 }
 function closeModal() {
   editId = null;
