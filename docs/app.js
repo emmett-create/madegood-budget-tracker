@@ -36,7 +36,8 @@ let selected    = new Set();   // ids checked off for Lumanu CSV export
 // ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   bindAll();
-  load();
+  load().then(syncLumanuStatus);
+  setInterval(syncLumanuStatus, 60_000);
 });
 
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -405,33 +406,28 @@ function attachInvoice(entryId) {
   input.click();
 }
 
-// One-time catch-up pull of real status straight from Lumanu — use when a
-// webhook retry already gave up before our side started answering it
-// correctly (e.g. the 2026-09-15 to 2026-10-14 header-name bug).
-async function refreshLumanuStatus() {
-  const pw = prompt('Enter the password to refresh Lumanu status:');
-  if (!pw) return;
-
+// Silently pulls real status straight from Lumanu for anything stuck at
+// "Needs Approval" — catches cases where a webhook retry already gave up
+// before our side started answering it correctly (e.g. the 2026-09-15 to
+// 2026-10-14 header-name bug). No password: read-only status mirror, safe
+// to run automatically. Runs on page load and every 60s afterward; the
+// button in the Sent view just lets Emmett force an immediate check too.
+let lumanuSyncing = false;
+async function syncLumanuStatus() {
+  if (lumanuSyncing) return;
+  lumanuSyncing = true;
   const btn = document.getElementById('btn-refresh-lumanu');
-  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  if (btn) btn.textContent = 'Checking…';
   try {
-    const r = await fetch(`${BRIDGE_API}/api/lumanu/reconcile/madegood`, {
-      method: 'POST',
-      headers: { 'X-Bridge-Secret': pw },
-    });
-    if (r.status === 401) { alert('Wrong password.'); return; }
-    if (!r.ok) { alert('Error checking Lumanu — please try again.'); return; }
-    const { checked, updated, errors } = await r.json();
-    let msg = `Checked ${checked} payable${checked === 1 ? '' : 's'}.`;
-    msg += updated.length ? ` Updated ${updated.length}:\n` + updated.map(u => `• ${u.old_status || '(none)'} → ${u.new_status}`).join('\n')
-                          : ' Everything was already up to date.';
-    if (errors.length) msg += `\n\n${errors.length} couldn't be checked:\n` + errors.map(e => `• ${e.error}`).join('\n');
-    alert(msg);
+    const r = await fetch(`${BRIDGE_API}/api/lumanu/reconcile/madegood`, { method: 'POST' });
+    if (!r.ok) return;
+    const { updated } = await r.json();
     if (updated.length) await load();
-  } catch (e) {
-    alert('Error checking Lumanu — please try again. ' + (e.message || ''));
+  } catch {
+    // Silent — this is a background convenience, not a user-initiated action.
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Lumanu Status'; }
+    lumanuSyncing = false;
+    if (btn) btn.textContent = '🔄 Refresh Lumanu Status';
   }
 }
 
@@ -581,7 +577,7 @@ function bindAll() {
 
   // Send to Lumanu (direct API)
   document.getElementById('btn-export-lumanu').addEventListener('click', sendSelectedToLumanu);
-  document.getElementById('btn-refresh-lumanu').addEventListener('click', refreshLumanuStatus);
+  document.getElementById('btn-refresh-lumanu').addEventListener('click', syncLumanuStatus);
   document.getElementById('btn-clear-selection').addEventListener('click', () => {
     selected.clear();
     updateExportBar();
