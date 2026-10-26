@@ -1,6 +1,8 @@
 // MadeGood Budget Tracker
 
 const TOTAL_BUDGET = 500_000;
+const OCTOBER_BUDGET = 27_000;   // Kendall, Slack 2026-10-22 ($41.5k with rollover pulled out)
+const HOLIDAY_BUDGET = 114_500;  // Jillian, Slack 2026-10-22 ("the number we're actually spending against")
 const CATS = {
   a8_paid:       'A8 Paid Influencers',
   madegood_paid: 'MadeGood Paid Influencers',
@@ -206,6 +208,24 @@ function renderSummary() {
   const wlAct = wl.filter(r => r.entry_type === 'actual');
   setText('wl-count', wl.length + ' entries');
   setText('wl-amt', wlAct.length > 0 ? '· ' + fmt(sum(wlAct)) + ' actual' : '');
+
+  // October campaign tally (Kendall, 2026-10-22 — $27k budget)
+  const oct = rows.filter(r =>
+    (r.description || '').toLowerCase().includes('october') ||
+    (r.creator_handle || '').toLowerCase().includes('october')
+  );
+  const octAct = oct.filter(r => r.entry_type === 'actual');
+  setText('oct-count', oct.length + ' entries');
+  setText('oct-amt', '· ' + fmt(sum(octAct)) + ' of ' + fmt(OCTOBER_BUDGET) + ' actual');
+
+  // Holiday campaign tally (Jillian, 2026-10-22 — $114.5k budget)
+  const hol = rows.filter(r =>
+    (r.description || '').toLowerCase().includes('holiday') ||
+    (r.creator_handle || '').toLowerCase().includes('holiday')
+  );
+  const holAct = hol.filter(r => r.entry_type === 'actual');
+  setText('hol-count', hol.length + ' entries');
+  setText('hol-amt', '· ' + fmt(sum(holAct)) + ' of ' + fmt(HOLIDAY_BUDGET) + ' actual');
 }
 
 // ── Table view ────────────────────────────────────────────────────────────────
